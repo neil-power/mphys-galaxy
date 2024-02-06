@@ -8,7 +8,7 @@ catalog = pd.read_csv('Data\gz1_desi_cross_cat.csv')
 
 def get_paths(catalog):
     dr8_ids = catalog['dr8_id'].astype('str')
-    brick_ids = dr8_ids.str.split('_', n=1,expand=True)[1]
+    brick_ids = dr8_ids.str.split('_', n=1,expand=True)[0]
     file_paths = desi_path+"/"+brick_ids+"/"+dr8_ids+".jpg"
     return file_paths
 
