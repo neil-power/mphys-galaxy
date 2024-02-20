@@ -1,2 +1,3 @@
 *.sh
 Data/gz_desi_deep_learning_catalog_friendly.parquet
+Code/lightning_logs
