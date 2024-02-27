@@ -18,7 +18,7 @@ def build_mask(s, margin=2, dtype=torch.float32):
     return mask
 
 class VanillaLeNet(nn.Module):
-    def __init__(self, in_chan=3, num_classes=3, imsize=160+1, kernel_size=5, N=None):
+    def __init__(self, in_chan=3, num_classes=3, imsize=160, kernel_size=5, N=None):
         super(VanillaLeNet, self).__init__()
         
         z = 0.5*(imsize - 2)
