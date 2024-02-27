@@ -1,0 +1,1 @@
+This is for Ezzy to sort out if resnet 50 proves to be a worthwhile model

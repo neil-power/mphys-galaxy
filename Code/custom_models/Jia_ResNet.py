@@ -4,6 +4,7 @@ import numpy as np
 from typing import Type, Any, Callable, Union, List, Optional, Tuple
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision.models as models
 from torchvision.models.resnet import BasicBlock, Bottleneck
 
 class JiaResnet(models.resnet.ResNet):

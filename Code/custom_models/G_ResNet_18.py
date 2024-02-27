@@ -1,12 +1,9 @@
 from typing import Tuple, List, Any, Union
 
-import e2cnn.nn as enn
-from e2cnn import gspaces
-from e2cnn.nn import init
-from e2cnn.nn import GeometricTensor
-from e2cnn.nn import FieldType
-from e2cnn.nn import EquivariantModule
-from e2cnn.gspaces import *
+import escnn.nn as enn
+from escnn import gspaces
+from escnn.nn import init,GeometricTensor,FieldType,EquivariantModule
+from escnn.gspaces import *
 
 import math
 import numpy as np
@@ -128,14 +125,17 @@ class BasicBlock(enn.EquivariantModule):
             return input_shape
 
 
-class ResNet18(torch.nn.Module):
-    def __init__(self, dropout_rate, num_classes=3,
+class G_ResNet18(torch.nn.Module):
+    def __init__(self, 
+                 dropout_rate: float=0, 
+                 num_classes:int =3,
                  N: int = 8,
                  r: int = 0,
                  f: bool = False,
                  deltaorth: bool = False,
                  fixparams: bool = True,
                  initial_stride: int = 1,
+                 NOISY: bool = False,
                  ):
         r"""
         
@@ -165,7 +165,7 @@ class ResNet18(torch.nn.Module):
         NOTICE: if restriction to ``N/2`` is performed, ``N`` needs to be even!
         
         """
-        super(ResNet18, self).__init__()
+        super(G_ResNet18, self).__init__()
 
         nStages = [16, 16, 32, 64, 128] # this is diff in other file
 
@@ -180,14 +180,14 @@ class ResNet18(torch.nn.Module):
         self._f = f
         if self._f:
             if N != 1:
-                self.gspace = gspaces.FlipRot2dOnR2(N) # change to escnn
+                self.gspace = gspaces.flipRot2dOnR2(N) # change to escnn
             else:
-                self.gspace = gspaces.Flip2dOnR2()
+                self.gspace = gspaces.flip2dOnR2()
         else:
             if N != 1:
-                self.gspace = gspaces.Rot2dOnR2(N)
+                self.gspace = gspaces.rot2dOnR2(N)
             else:
-                self.gspace = gspaces.TrivialOnR2()
+                self.gspace = gspaces.trivialOnR2()
 
         # level of [R]estriction:
         #   r = 0: never do restriction, i.e. initial group (either DN or CN) preserved for the whole network
@@ -219,11 +219,11 @@ class ResNet18(torch.nn.Module):
         n = 2 # WE CAN CHANGE THIS TO GENERALISE YIPEEEE
 
         self.conv1 = conv3x3(r1, r2)
-        self.layer1 = self.basicLayer(BasicBlock, nStages[1], n, dropout_rate, stride=1) #stride 2 always in other
-        self.layer2 = self.basicLayer(BasicBlock, nStages[2], n, dropout_rate, stride=2)
-        self.layer3 = self.basicLayer(BasicBlock, nStages[3], n, dropout_rate, stride=2)
+        self.layer1 = self.basicLayer(BasicBlock, nStages[1], n, dropout_rate, stride=1, NOISY=NOISY) #stride 2 always in other
+        self.layer2 = self.basicLayer(BasicBlock, nStages[2], n, dropout_rate, stride=2, NOISY=NOISY)
+        self.layer3 = self.basicLayer(BasicBlock, nStages[3], n, dropout_rate, stride=2, NOISY=NOISY)
         # last layer maps to a trivial (invariant) feature map
-        self.layer4 = self.basicLayer(BasicBlock, nStages[4], n, dropout_rate, stride=2, totrivial=True)
+        self.layer4 = self.basicLayer(BasicBlock, nStages[4], n, dropout_rate, stride=2, totrivial=True, NOISY=NOISY)
 
         self.bn = enn.InnerBatchNorm(self.layer4.out_type, momentum=0.9)
         self.relu = enn.ReLU(self.bn.out_type, inplace=True)
@@ -240,17 +240,18 @@ class ResNet18(torch.nn.Module):
                 module.bias.data.zero_()
             elif isinstance(module, torch.nn.Linear):
                 module.bias.data.zero_()
+        if NOISY:
+            print("MODEL TOPOLOGY:")
+            for i, (name, mod) in enumerate(self.named_modules()):
+                print(f"\t{i} - {name}")
 
-        print("MODEL TOPOLOGY:")
-        for i, (name, mod) in enumerate(self.named_modules()):
-            print(f"\t{i} - {name}")
-
-    def basicLayer(self, block, planes: int, num_blocks: int, dropout_rate: float, stride: int,
+    def basicLayer(self, block, planes: int, num_blocks: int, dropout_rate: float, stride: int, NOISY: bool,
                     totrivial: bool = False
                     ) -> enn.SequentialModule:
 
         self._layer += 1
-        print("start building", self._layer)
+        if NOISY:
+            print("start building", self._layer)
         strides = [stride] + [1] * (num_blocks - 1)
         layers = []
 
@@ -270,7 +271,8 @@ class ResNet18(torch.nn.Module):
             layers.append(block(self._in_type, inner_type, dropout_rate, stride, out_type=out_f))
             self._in_type = out_f
 
-        print("layer", self._layer, "built")
+        if NOISY:
+            print("layer", self._layer, "built")
         return enn.SequentialModule(*layers)
 
     def features(self, x):

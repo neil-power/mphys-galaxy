@@ -3,10 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-imgsize = 160 #pixels along one side
-num_classes = 3
-num_channels =3
-
 def build_mask(s, margin=2, dtype=torch.float32):
     mask = torch.zeros(1, 1, s, s, dtype=dtype)
     c = (s-1) / 2
@@ -22,7 +18,7 @@ def build_mask(s, margin=2, dtype=torch.float32):
     return mask
 
 class VanillaLeNet(nn.Module):
-    def __init__(self, in_chan=num_channels, out_chan=num_classes, imsize=imgsize+1, kernel_size=5, N=None):
+    def __init__(self, in_chan=3, num_classes=3, imsize=160+1, kernel_size=5, N=None):
         super(VanillaLeNet, self).__init__()
         
         z = 0.5*(imsize - 2)
@@ -34,7 +30,7 @@ class VanillaLeNet(nn.Module):
         self.conv2 = nn.Conv2d(6, 16, kernel_size, padding=1)
         self.fc1   = nn.Linear(16*z*z, 120)
         self.fc2   = nn.Linear(120, 84)
-        self.fc3   = nn.Linear(84, out_chan)
+        self.fc3   = nn.Linear(84, num_classes)
         self.drop  = nn.Dropout(p=0.5)
         
         # dummy parameter for tracking device

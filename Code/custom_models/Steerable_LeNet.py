@@ -8,12 +8,9 @@ import torch.nn.functional as F
 from escnn import gspaces
 from escnn import nn as enn
 
-imgsize = 160 #pixels along one side
-num_classes = 3
-num_channels =3
 
 class CNSteerableLeNet(nn.Module):
-    def __init__(self, in_chan=num_channels, out_chan=num_channels, imsize=imgsize+1, kernel_size=5, N=8):
+    def __init__(self, in_chan=3, num_classes=3, imsize=160+1, kernel_size=5, N=8):
         super(CNSteerableLeNet, self).__init__()
         
         z = 0.5*(imsize - 2)
@@ -40,7 +37,7 @@ class CNSteerableLeNet(nn.Module):
 
         self.fc1   = nn.Linear(16*z*z, 120)
         self.fc2   = nn.Linear(120, 84)
-        self.fc3   = nn.Linear(84, out_chan)
+        self.fc3   = nn.Linear(84, num_classes)
         
         self.drop  = nn.Dropout(p=0.5)
         
