@@ -63,7 +63,11 @@ class ChiralityClassifier(pl.LightningModule):
 
     def _step(self, batch):
         x, y = batch
-        preds = self(x)
+        
+        if self.num_classes == 2: # NOT IDEAL, CATCH FOR JIARESNET
+            preds = self.predict(x)
+        else:
+            preds = self(x)
         loss = self.loss_fn(preds, y)
         acc = self.acc(preds, y)
         return loss, acc
