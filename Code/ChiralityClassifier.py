@@ -16,7 +16,6 @@ class ChiralityClassifier(pl.LightningModule):
     jiaresnet50 - LeNet
     G_ResNet18 - G_LeNet
     """
-
     model_versions = {
         "resnet18": models.resnet18,
         "resnet34": models.resnet34,
