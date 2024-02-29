@@ -76,21 +76,21 @@ class ChiralityClassifier(pl.LightningModule):
         #time here
         loss, acc = self._step(batch)
         # perform logging
-        self.log("train_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
-        self.log("train_acc", acc, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log("train_acc", acc, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         loss, acc = self._step(batch)
         # perform logging
-        self.log("val_loss", loss, on_epoch=False, prog_bar=False, logger=True)
-        self.log("val_acc", acc, on_epoch=False, prog_bar=True, logger=True)
+        self.log("val_loss", loss, on_epoch=True, prog_bar=False, logger=True)
+        self.log("val_acc", acc, on_epoch=True, prog_bar=True, logger=True)
 
     def test_step(self, batch, batch_idx):
         loss, acc = self._step(batch)
         # perform logging
-        self.log("test_loss", loss, on_step=False, prog_bar=True, logger=True)
-        self.log("test_acc", acc, on_step=False, prog_bar=True, logger=True)
+        self.log("test_loss", loss, on_step=True, prog_bar=True, logger=True)
+        self.log("test_acc", acc, on_step=True, prog_bar=True, logger=True)
 
     def accuracy_metric(self,predicted_labels,true_labels):
         #Takes in softmaxed labels, checks if max column is the same
