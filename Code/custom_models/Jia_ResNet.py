@@ -63,6 +63,9 @@ class JiaResnet(models.resnet.ResNet):
 
         return x
     
+    def __call__(self, *args, **kwargs):
+         return self.predict(*args, **kwargs)
+    
     def predict(self, x: Tensor) -> Tensor: #Override predict
         x_i = torch.flip(x, (-1,))
         a = self(x)

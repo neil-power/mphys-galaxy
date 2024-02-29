@@ -157,6 +157,7 @@ trainer = pl.Trainer(
     accelerator="gpu",
     max_epochs=60,
     devices=1,
+    default_root_dir="/share/nas2/npower/mphys-galaxy/Code/"
     #callbacks=[stopping_callback]
 )
 

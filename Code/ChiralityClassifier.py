@@ -7,7 +7,6 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 import torchvision.models as models
-from torcheval.metrics import BinaryAccuracy
 
 class ChiralityClassifier(pl.LightningModule):
     model_versions = {
@@ -47,7 +46,7 @@ class ChiralityClassifier(pl.LightningModule):
         self.optimizer = self.optimizers[optimizer]
         self.scheduler = self.schedulers[scheduler]
         self.loss_fn = nn.CrossEntropyLoss()
-        self.acc = self.accuracy_metric #Accuracy(task="multiclass", num_classes=num_classes)
+        self.acc = self.accuracy_metric
         self.model = self.model_versions[model_version](num_classes=num_classes)
 
     def forward(self, X):
@@ -64,41 +63,34 @@ class ChiralityClassifier(pl.LightningModule):
     def _step(self, batch):
         x, y = batch
         
-        if self.num_classes == 2: # NOT IDEAL, CATCH FOR JIARESNET
-            preds = self.predict(x)
-        else:
-            preds = self(x)
+        preds = self(x)
         loss = self.loss_fn(preds, y)
         acc = self.acc(preds, y)
         return loss, acc
 
     def training_step(self, batch, batch_idx):
-        #time here
         loss, acc = self._step(batch)
-        # perform logging
-        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log("train_acc", acc, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+
+        self.log("train_loss", loss, on_epoch=True, prog_bar=True, logger=True)
+        self.log("train_acc", acc, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         loss, acc = self._step(batch)
-        # perform logging
+
         self.log("val_loss", loss, on_epoch=True, prog_bar=False, logger=True)
         self.log("val_acc", acc, on_epoch=True, prog_bar=True, logger=True)
 
     def test_step(self, batch, batch_idx):
         loss, acc = self._step(batch)
-        # perform logging
+
         self.log("test_loss", loss, on_step=True, prog_bar=True, logger=True)
         self.log("test_acc", acc, on_step=True, prog_bar=True, logger=True)
 
     def accuracy_metric(self,predicted_labels,true_labels):
-        #Takes in softmaxed labels, checks if max column is the same
-
         true_highest_prob = torch.argmax(true_labels, dim=1)
         predicted_highest_prob = torch.argmax(predicted_labels, dim=1)   
-        
-        metric = BinaryAccuracy()
-        metric.update(predicted_highest_prob,true_highest_prob)
-        test_accuracy = metric.compute()
+
+        matches = torch.count_nonzero(true_highest_prob==predicted_highest_prob)
+        test_accuracy = matches/true_highest_prob.shape[0]
         return test_accuracy
