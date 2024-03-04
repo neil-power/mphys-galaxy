@@ -9,6 +9,12 @@ import torch.nn as nn
 import torchvision.models as models
 
 class ChiralityClassifier(pl.LightningModule):
+    """
+    Models:
+    resnet18 - resnet34 - resnet50 - resnet101 - resnet152
+    jiaresnet50 - LeNet
+    G_ResNet18 - G_LeNet
+    """
     model_versions = {
         "resnet18": models.resnet18,
         "resnet34": models.resnet34,
