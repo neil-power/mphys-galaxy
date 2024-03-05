@@ -146,7 +146,7 @@ RUN_TEST = False
 
 model = ChiralityClassifier(
     num_classes=3, #2 for Jia et al version
-    model_version="G_LeNet",
+    model_version="G_ResNet18",
     optimizer="adamw",
     scheduler  ="steplr",
     lr=0.0001,
@@ -174,6 +174,6 @@ trainer.fit(model,train_dataloaders=datamodule.train_dataloader(),val_dataloader
 if RUN_TEST:
     trainer.test(model,test_dataloader=datamodule.test_dataloader())
     
-torch.save(trainer.model.state_dict(), SAVE_PATH + "/lenet_best_subset.pt")
+torch.save(trainer.model.state_dict(), SAVE_PATH + "/g_resnet_18_best_subset.pt")
 
 
