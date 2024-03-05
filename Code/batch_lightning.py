@@ -28,7 +28,7 @@ class modes(Enum):
     LOCAL_SUBSET = 3 #Use local cache of 1500 galaxies
 
 IMG_SIZE = 160 # This is the output size of the generated image array
-MODE = modes.CUT_DATASET
+MODE = modes.BEST_SUBSET
 
 #If using best subset, Number of CW, ACW and EL to select
 THRESHOLD = 0.8
@@ -41,7 +41,7 @@ FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg'
 CUT_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_cut.csv'
 LOCAL_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/subset_gz1_desi_cross_cat.csv'
 LOCAL_SUBSET_DATA_PATH = '/share/nas2/npower/mphys-galaxy/Data/Subset'
-SAVE_PATH = "../Models"
+SAVE_PATH = "/share/nas2/npower/mphys-galaxy/Models"
 
 torch.set_float32_matmul_precision("medium")
 
@@ -139,9 +139,14 @@ datamodule.setup()
 # %%
 RUN_TEST = False
 
+# Models:
+#resnet18,resnet34,resnet50,resnet101,resnet152,
+#jiaresnet50,LeNet,
+#G_ResNet18,G_LeNet,
+
 model = ChiralityClassifier(
     num_classes=3, #2 for Jia et al version
-    model_version="resnet18",
+    model_version="G_LeNet",
     optimizer="adamw",
     scheduler  ="steplr",
     lr=0.0001,
@@ -157,7 +162,8 @@ trainer = pl.Trainer(
     accelerator="gpu",
     max_epochs=60,
     devices=1,
-    default_root_dir="/share/nas2/npower/mphys-galaxy/Code/"
+    default_root_dir="/share/nas2/npower/mphys-galaxy/Code/",
+    profiler="pytorch"
     #callbacks=[stopping_callback]
 )
 
@@ -168,6 +174,6 @@ trainer.fit(model,train_dataloaders=datamodule.train_dataloader(),val_dataloader
 if RUN_TEST:
     trainer.test(model,test_dataloader=datamodule.test_dataloader())
     
-#torch.save(trainer.model.state_dict(), SAVE_PATH + "/trained_model.pt")
+torch.save(trainer.model.state_dict(), SAVE_PATH + "/lenet_best_subset.pt")
 
 
