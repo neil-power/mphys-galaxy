@@ -97,7 +97,7 @@ class ChiralityClassifier(pl.LightningModule):
 
         self.log("train_loss", loss, on_epoch=True, prog_bar=True, logger=True)
         self.log("train_acc", acc, on_epoch=True, prog_bar=True, logger=True)
-        self.log("calibration_error", ece, on_epoch=True, prog_bar=True, logger=True)
+        self.log("train_calibration_error", ece, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -105,7 +105,7 @@ class ChiralityClassifier(pl.LightningModule):
 
         self.log("val_loss", loss, on_epoch=True, prog_bar=False, logger=True)
         self.log("val_acc", acc, on_epoch=True, prog_bar=True, logger=True)
-        self.log("calibration_error", ece, on_epoch=True, prog_bar=True, logger=True)
+        self.log("val_calibration_error", ece, on_epoch=True, prog_bar=True, logger=True)
 
     def test_step(self, batch, batch_idx):
         loss, acc, ece = self._step(batch)
@@ -117,7 +117,7 @@ class ChiralityClassifier(pl.LightningModule):
 
         self.log("test_loss", loss, on_epoch=True, prog_bar=True, logger=True)
         self.log("test_acc", acc, on_epoch=True, prog_bar=True, logger=True)
-        self.log("calibration_error", ece, on_epoch=True, prog_bar=True, logger=True)
+        self.log("test_calibration_error", ece, on_epoch=True, prog_bar=True, logger=True)
         return y_true, y_preds
 
     def on_test_epoch_end(self):
