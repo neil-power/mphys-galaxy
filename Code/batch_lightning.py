@@ -28,9 +28,16 @@ class modes(Enum):
 
 IMG_SIZE = 160 # This is the output size of the generated image array
 MODE = modes.CUT_DATASET
+RUN_TEST = False #Run on testing dataset & save metrics
+# Models:
+#resnet18,resnet34,resnet50,resnet101,resnet152,
+#jiaresnet50,LeNet,
+#G_ResNet18,G_LeNet,
+MODEL_NAME = 'resnet18'
 
 #For .py files
-SAVE_PATH = "/share/nas2/npower/mphys-galaxy/Models"
+MODEL_SAVE_PATH = "/share/nas2/npower/mphys-galaxy/Models"
+GRAPH_SAVE_PATH = "/share/nas2/npower/mphys-galaxy/Graphs"
 LOG_PATH = "/share/nas2/npower/mphys-galaxy/Code/"
 FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg'
 LOCAL_SUBSET_DATA_PATH = '/share/nas2/npower/mphys-galaxy/Data/Subset'
@@ -142,8 +149,8 @@ RUN_TEST = False
 #G_ResNet18,G_LeNet,
 
 model = ChiralityClassifier(
-    num_classes=3, #2 for Jia et al version
-    model_version="G_ResNet18",
+    num_classes=(2 if (MODEL_NAME=="jiaresnet50") else 3), #2 for Jia et al version
+    model_version=MODEL_NAME,
     optimizer="adamw",
     scheduler  ="steplr",
     lr=0.0001,
@@ -151,6 +158,9 @@ model = ChiralityClassifier(
     step_size=5,
     gamma=0.85,
     batch_size=60,
+    weights=None,
+    model_save_path=f"{MODEL_SAVE_PATH}/{MODEL_NAME}_{MODE.name}.pt",
+    graph_save_path=f"{GRAPH_SAVE_PATH}/{MODEL_NAME}_{MODE.name}.png"
 )
 
 #stopping_callback = EarlyStopping(monitor="val_loss", mode="min")
@@ -168,8 +178,10 @@ trainer = pl.Trainer(
 trainer.fit(model,train_dataloaders=datamodule.train_dataloader(),val_dataloaders=datamodule.val_dataloader() )
 
 if RUN_TEST:
-    trainer.test(model,test_dataloader=datamodule.test_dataloader())
+    trainer.test(model,dataloaders=datamodule.test_dataloader())
+else:
+    trainer.test(model,dataloaders=datamodule.val_dataloader())
     
-torch.save(trainer.model.state_dict(), SAVE_PATH + "/g_resnet_18_cut.pt")
+torch.save(trainer.model.state_dict(), model.model_save_path)
 
 

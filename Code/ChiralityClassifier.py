@@ -1,16 +1,19 @@
-from custom_models.G_ResNet_18 import G_ResNet18
-from custom_models.Jia_ResNet import JiaResnet50
-from custom_models.LeNet import VanillaLeNet
-from custom_models.Steerable_LeNet import CNSteerableLeNet
-import lightning as pl
 import torch
 import torch.optim as optim
 import torch.nn as nn
 import torchvision.models as models
 from torchmetrics.functional.classification import multiclass_calibration_error
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import lightning as pl
+
 import matplotlib.pyplot as plt
 from  matplotlib.colors import LinearSegmentedColormap
+
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
+from custom_models.G_ResNet_18 import G_ResNet18
+from custom_models.Jia_ResNet import JiaResnet50
+from custom_models.LeNet import VanillaLeNet
+from custom_models.Steerable_LeNet import CNSteerableLeNet
 
 class ChiralityClassifier(pl.LightningModule):
     """
@@ -44,7 +47,9 @@ class ChiralityClassifier(pl.LightningModule):
         step_size=5,
         gamma=0.85,
         batch_size=16,
-        weights=None
+        weights=None,
+        graph_save_path='',
+        model_save_path = ''
     ):
         super().__init__()
 
@@ -64,6 +69,8 @@ class ChiralityClassifier(pl.LightningModule):
             self.load_state_dict(torch.load(weights))
         self.test_y_predicted = []
         self.test_y_true = []
+        self.graph_save_path = graph_save_path
+        self.model_save_path = model_save_path
 
     def forward(self, X):
         return self.model(X)
@@ -129,7 +136,7 @@ class ChiralityClassifier(pl.LightningModule):
          ax.set_ylabel('True Labels',fontsize=12)
          ax.tick_params(axis='both', which='major', labelsize=12)
          ax.tick_params(axis='both', which='minor', labelsize=10)
-         plt.savefig('confusion_test.png')
+         plt.savefig(self.graph_save_path)
 
     def accuracy_metric(self,predicted_labels,true_labels):
         true_highest_prob = torch.argmax(true_labels, dim=1)
@@ -142,3 +149,4 @@ class ChiralityClassifier(pl.LightningModule):
     def ece_metric(self,predicted_labels,true_labels):
         metric = multiclass_calibration_error(predicted_labels, torch.argmax(true_labels, dim=1), num_classes=3, n_bins=3, norm='l1')
         return metric
+
