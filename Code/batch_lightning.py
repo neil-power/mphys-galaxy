@@ -33,7 +33,8 @@ RUN_TEST = False #Run on testing dataset & save metrics
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #jiaresnet50,LeNet,
 #G_ResNet18,G_LeNet,
-MODEL_NAME = 'resnet18'
+MODEL_NAME = 'G_LeNet'
+CUSTOM_ID = ''
 
 #For .py files
 MODEL_SAVE_PATH = "/share/nas2/npower/mphys-galaxy/Models"
@@ -49,6 +50,7 @@ BEST_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_
 LOCAL_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_local_subset.csv'
 
 torch.set_float32_matmul_precision("medium")
+MODEL_ID = f"{MODEL_NAME}_{MODE.name.lower()}_{CUSTOM_ID}"
 
 # %% [markdown]
 # ## GPU Test
@@ -107,7 +109,7 @@ if MODE == modes.CUT_DATASET:
         label_cols=['P_CW','P_ACW','P_OTHER'],
         train_catalog=train_catalog, val_catalog=train_catalog, test_catalog=test_catalog,
         custom_albumentation_transform=generate_transforms(),
-        batch_size=200,
+        batch_size=100,
         num_workers=11,
     )
     
@@ -129,7 +131,7 @@ else:
         catalog=catalog,
         train_fraction=0.7, val_fraction=0.15, test_fraction=0.15,
         custom_albumentation_transform=generate_transforms(),
-        batch_size=200,
+        batch_size=100,
         num_workers=11,
     )
 
@@ -159,8 +161,8 @@ model = ChiralityClassifier(
     gamma=0.85,
     batch_size=60,
     weights=None,
-    model_save_path=f"{MODEL_SAVE_PATH}/{MODEL_NAME}_{MODE.name}.pt",
-    graph_save_path=f"{GRAPH_SAVE_PATH}/{MODEL_NAME}_{MODE.name}.png"
+    model_save_path=f"{MODEL_SAVE_PATH}/{MODEL_ID}.pt",
+    graph_save_path=f"{GRAPH_SAVE_PATH}/{MODEL_ID}_matrix.png"
 )
 
 #stopping_callback = EarlyStopping(monitor="val_loss", mode="min")
