@@ -62,15 +62,15 @@ class JiaResnet(models.resnet.ResNet):
         x = self.fc(x)
 
         return x
-    
-    def __call__(self, *args, **kwargs):
-         return self.predict(*args, **kwargs)
-    
+ 
     def predict(self, x: Tensor) -> Tensor: #Override predict
         x_i = torch.flip(x, (-1,))
-        a = self(x)
-        a_i = self(x_i)
+        a = super().__call__(x)
+        a_i = super().__call__(x_i)
         return torch.cat((a[..., 0:1], a_i[..., 0:1], 0.5 * (a[..., 1:2] + a_i[..., 1:2])), dim=-1)
+
+    def __call__(self, *args, **kwargs):
+         return self.predict(*args, **kwargs)
 
 
 def JiaResnet50(**kwargs: Any) -> JiaResnet:
