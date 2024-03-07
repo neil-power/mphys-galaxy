@@ -123,7 +123,7 @@ class ChiralityClassifier(pl.LightningModule):
     def on_test_epoch_end(self):
          y_true = torch.argmax(torch.cat(self.test_y_true),dim=1)
          y_preds = torch.argmax(torch.cat(self.test_y_predicted),dim=1)
-         cm = confusion_matrix(y_true, y_preds,normalize = 'true')
+         cm = confusion_matrix(y_true.cpu(), y_preds.cpu(),normalize = 'true')
 
          disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['S','Z','None'])
          colours = ['#ffffcc','#a1dab4','#41b6c4','#2c7fb8','#253494']
