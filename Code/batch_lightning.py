@@ -98,7 +98,7 @@ def generate_transforms(resize_after_crop=IMG_SIZE):
 if MODE == modes.CUT_DATASET:
     train_val_catalog = pd.read_csv(CUT_CATALOG_TRAIN_PATH)
     train_val_catalog['file_loc'] = get_file_paths(train_val_catalog,FULL_DATA_PATH)
-    generator1 = torch.Generator()
+    generator1 = torch.Generator().manual_seed(42) #Preset test-val split, note test dataloader will still shuffle
     train_catalog, val_catalog = random_split(train_val_catalog, [0.20,0.80], generator=generator1)
     train_catalog = train_catalog.dataset.iloc[train_catalog.indices]
     val_catalog = val_catalog.dataset.iloc[val_catalog.indices]   
