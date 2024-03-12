@@ -139,6 +139,14 @@ class ChiralityClassifier(pl.LightningModule):
          ax.tick_params(axis='both', which='minor', labelsize=10)
          plt.savefig(self.graph_save_path)
 
+    def predict_step(self, batch, batch_idx):
+        #x, y = batch 
+        preds = self(batch)
+        t_val = self.chirality_violation(preds)
+
+        self.log("predicted_chirality_violation", t_val, on_epoch=True, prog_bar=True, logger=True)
+        return t_val
+
     def acc(self,predicted_labels,true_labels):
         true_highest_prob = torch.argmax(true_labels, dim=1)
         predicted_highest_prob = torch.argmax(predicted_labels, dim=1)   
