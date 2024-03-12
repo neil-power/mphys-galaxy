@@ -64,6 +64,7 @@ class ChiralityClassifier(pl.LightningModule):
         self.loss_fn = nn.CrossEntropyLoss()
         self.model = self.model_versions[model_version](num_classes=num_classes)
         if weights is not None:
+            self.eval()
             self.load_state_dict(torch.load(weights))
         self.test_y_predicted = []
         self.test_y_true = []
