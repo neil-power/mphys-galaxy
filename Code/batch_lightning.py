@@ -9,8 +9,9 @@ import os
 from enum import Enum
 import pandas as pd
 import torch
-import lightning as pl
 from torch.utils.data import random_split
+import lightning as pl
+from pytorch_lightning.loggers import TensorBoardLogger,CSVLogger
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 import albumentations as A
 from galaxy_datasets.pytorch.galaxy_datamodule import GalaxyDataModule
@@ -33,13 +34,17 @@ RUN_TEST = False #Run on testing dataset & save metrics
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #jiaresnet50,LeNet,
 #G_ResNet18,G_LeNet,
-MODEL_NAME = 'G_LeNet'
-CUSTOM_ID = ''
+MODEL_NAME = 'jiaresnet50'
+CUSTOM_ID = 'repeat'
+USE_TENSORBOARD = False
+SAVE_MODEL = False
+REPEAT_RUNS = 5 #Set to 0 for 1 run
 
 #For .py files
 MODEL_SAVE_PATH = "/share/nas2/npower/mphys-galaxy/Models"
 GRAPH_SAVE_PATH = "/share/nas2/npower/mphys-galaxy/Graphs"
-LOG_PATH = "/share/nas2/npower/mphys-galaxy/Code/"
+LOG_PATH = "/share/nas2/npower/mphys-galaxy/Code/lightning_logs"
+
 FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg'
 LOCAL_SUBSET_DATA_PATH = '/share/nas2/npower/mphys-galaxy/Data/Subset'
 
@@ -109,7 +114,7 @@ if MODE == modes.CUT_DATASET:
         label_cols=['P_CW','P_ACW','P_OTHER'],
         train_catalog=train_catalog, val_catalog=train_catalog, test_catalog=test_catalog,
         custom_albumentation_transform=generate_transforms(),
-        batch_size=100,
+        batch_size=200,
         num_workers=11,
     )
     
@@ -143,47 +148,43 @@ datamodule.prepare_data()
 datamodule.setup()
 
 # %%
-RUN_TEST = False
+for run in range(0,REPEAT_RUNS):
+    model = ChiralityClassifier(
+        num_classes=(2 if (MODEL_NAME=="jiaresnet50") else 3), #2 for Jia et al version
+        model_version=MODEL_NAME,
+        optimizer="adamw",
+        scheduler  ="steplr",
+        lr=0.0001,
+        weight_decay=0,
+        step_size=5,
+        gamma=0.85,
+        batch_size=60,
+        weights=None,
+        model_save_path=f"{MODEL_SAVE_PATH}/{MODEL_ID}_{run}.pt",
+        graph_save_path=f"{GRAPH_SAVE_PATH}/{MODEL_ID}_{run}_matrix.png"
+    )
 
-# Models:
-#resnet18,resnet34,resnet50,resnet101,resnet152,
-#jiaresnet50,LeNet,
-#G_ResNet18,G_LeNet,
+    tb_logger = TensorBoardLogger(LOG_PATH, name=MODEL_ID,version=run)
+    csv_logger = CSVLogger(LOG_PATH,name=MODEL_ID,version=run)
 
-model = ChiralityClassifier(
-    num_classes=(2 if (MODEL_NAME=="jiaresnet50") else 3), #2 for Jia et al version
-    model_version=MODEL_NAME,
-    optimizer="adamw",
-    scheduler  ="steplr",
-    lr=0.0001,
-    weight_decay=0,
-    step_size=5,
-    gamma=0.85,
-    batch_size=60,
-    weights=None,
-    model_save_path=f"{MODEL_SAVE_PATH}/{MODEL_ID}.pt",
-    graph_save_path=f"{GRAPH_SAVE_PATH}/{MODEL_ID}_matrix.png"
-)
+    trainer = pl.Trainer(
+        accelerator=("gpu" if device.type=="cuda" else "cpu"),
+        max_epochs=60,
+        devices=1,
+        logger=([tb_logger,csv_logger] if USE_TENSORBOARD else csv_logger),
+        default_root_dir=f'{LOG_PATH}/{MODEL_ID}',
+        profiler="pytorch"
+        #callbacks=EarlyStopping(monitor="val_loss", mode="min")
+    )
 
-#stopping_callback = EarlyStopping(monitor="val_loss", mode="min")
+    #compiled_model = torch.compile(model, backend="eager")
+    trainer.fit(model,train_dataloaders=datamodule.train_dataloader(),val_dataloaders=datamodule.val_dataloader())
 
-trainer = pl.Trainer(
-    accelerator=("gpu" if device.type=="cuda" else "cpu"),
-    max_epochs=60,
-    devices=1,
-    default_root_dir=LOG_PATH,
-    profiler="pytorch"
-    #callbacks=[stopping_callback]
-)
+    if RUN_TEST:
+        trainer.test(model,dataloaders=datamodule.test_dataloader())
+    else:
+        trainer.test(model,dataloaders=datamodule.val_dataloader())
 
-#compiled_model = torch.compile(model, backend="eager")
-trainer.fit(model,train_dataloaders=datamodule.train_dataloader(),val_dataloaders=datamodule.val_dataloader() )
-
-if RUN_TEST:
-    trainer.test(model,dataloaders=datamodule.test_dataloader())
-else:
-    trainer.test(model,dataloaders=datamodule.val_dataloader())
-    
-torch.save(trainer.model.state_dict(), model.model_save_path)
-
+    if SAVE_MODEL:
+        torch.save(trainer.model.state_dict(), model.model_save_path)
 
