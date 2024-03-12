@@ -88,10 +88,11 @@ class ChiralityClassifier(pl.LightningModule):
         loss = self.loss_fn(preds, y)
         acc = self.acc(preds, y)
         ece = self.ece(preds, y)
-        return loss, acc, ece
+        t_val = self.chirality_violation(preds)
+        return loss, acc, ece, t_val
 
     def training_step(self, batch, batch_idx):
-        loss, acc, ece = self._step(batch)
+        loss, acc, ece, t_val = self._step(batch)
 
         self.log("train_loss", loss, on_epoch=True, prog_bar=True, logger=True)
         self.log("train_acc", acc, on_epoch=True, prog_bar=True, logger=True)
@@ -99,14 +100,15 @@ class ChiralityClassifier(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss, acc, ece = self._step(batch)
+        loss, acc, ece, t_val = self._step(batch)
 
         self.log("val_loss", loss, on_epoch=True, prog_bar=False, logger=True)
         self.log("val_acc", acc, on_epoch=True, prog_bar=True, logger=True)
         self.log("val_calibration_error", ece, on_epoch=True, prog_bar=True, logger=True)
+        self.log("val_chirality_violation", t_val, on_epoch=True, prog_bar=True, logger=True)
 
     def test_step(self, batch, batch_idx):
-        loss, acc, ece = self._step(batch)
+        loss, acc, ece, t_val = self._step(batch)
 
         x, y_true = batch
         y_preds = self(x)
@@ -116,6 +118,7 @@ class ChiralityClassifier(pl.LightningModule):
         self.log("test_loss", loss, on_epoch=True, prog_bar=True, logger=True)
         self.log("test_acc", acc, on_epoch=True, prog_bar=True, logger=True)
         self.log("test_calibration_error", ece, on_epoch=True, prog_bar=True, logger=True)
+        self.log("test_chirality_violation", t_val, on_epoch=True, prog_bar=True, logger=True)
         return y_true, y_preds
 
     def on_test_epoch_end(self):
@@ -145,7 +148,10 @@ class ChiralityClassifier(pl.LightningModule):
         return test_accuracy
     
     def ece(self,predicted_labels,true_labels):
-        metric = multiclass_calibration_error(torch.softmax(predicted_labels,dim=1), 
-                                              torch.argmax(true_labels, dim=1), 
-                                              num_classes=3, n_bins=15, norm='l1')
+        metric = multiclass_calibration_error(torch.softmax(predicted_labels,dim=1), torch.argmax(true_labels, dim=1), num_classes=3, n_bins=15, norm='l1')
         return metric
+    
+    def chirality_violation(self,labels):
+        n_z = torch.count_nonzero(labels[:,1]>0.5)
+        n_s = torch.count_nonzero(labels[:,0]>0.5)
+        return (n_z-n_s)/torch.sqrt(n_z+n_s)
