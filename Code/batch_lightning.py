@@ -34,15 +34,14 @@ RUN_TEST = False #Run on testing dataset & save metrics
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #jiaresnet50,LeNet,
 #G_ResNet18,G_LeNet,
-MODEL_NAME = 'jiaresnet50'
+MODEL_NAME = 'resnet50'
 CUSTOM_ID = 'repeat'
 USE_TENSORBOARD = False
 SAVE_MODEL = False
 REPEAT_RUNS = 5 #Set to 0 for 1 run
 
 #For .py files
-MODEL_SAVE_PATH = "/share/nas2/npower/mphys-galaxy/Models"
-GRAPH_SAVE_PATH = "/share/nas2/npower/mphys-galaxy/Graphs"
+METRICS_PATH = "/share/nas2/npower/mphys-galaxy/Metrics"
 LOG_PATH = "/share/nas2/npower/mphys-galaxy/Code/lightning_logs"
 
 FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg'
@@ -82,6 +81,10 @@ def get_file_paths(catalog_to_convert,folder_path):
     file_locations = folder_path+'/'+brick_ids+'/'+dr8_ids+'.jpg'
     print(f"Created {file_locations.shape[0]} galaxy filepaths")
     return file_locations
+
+def check_folder(save_dir):
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
 
 def generate_transforms(resize_after_crop=IMG_SIZE):
     transforms_to_apply = [
@@ -149,6 +152,11 @@ datamodule.setup()
 
 # %%
 for run in range(0,REPEAT_RUNS):
+
+    save_dir = f"{METRICS_PATH}/{MODEL_ID}/version_{run}"
+    check_folder(save_dir)
+
+
     model = ChiralityClassifier(
         num_classes=(2 if (MODEL_NAME=="jiaresnet50") else 3), #2 for Jia et al version
         model_version=MODEL_NAME,
@@ -160,8 +168,8 @@ for run in range(0,REPEAT_RUNS):
         gamma=0.85,
         batch_size=60,
         weights=None,
-        model_save_path=f"{MODEL_SAVE_PATH}/{MODEL_ID}_{run}.pt",
-        graph_save_path=f"{GRAPH_SAVE_PATH}/{MODEL_ID}_{run}_matrix.png"
+        model_save_path=f"{save_dir}/model.pt",
+        graph_save_path=f"{save_dir}/matrix.png"
     )
 
     tb_logger = TensorBoardLogger(LOG_PATH, name=MODEL_ID,version=run)
@@ -172,8 +180,8 @@ for run in range(0,REPEAT_RUNS):
         max_epochs=60,
         devices=1,
         logger=([tb_logger,csv_logger] if USE_TENSORBOARD else csv_logger),
-        default_root_dir=f'{LOG_PATH}/{MODEL_ID}',
-        profiler="pytorch"
+        default_root_dir=f'{LOG_PATH}/{MODEL_ID}'
+        #profiler="pytorch"
         #callbacks=EarlyStopping(monitor="val_loss", mode="min")
     )
 

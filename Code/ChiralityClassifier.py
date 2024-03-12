@@ -145,5 +145,7 @@ class ChiralityClassifier(pl.LightningModule):
         return test_accuracy
     
     def ece(self,predicted_labels,true_labels):
-        metric = multiclass_calibration_error(torch.softmax(predicted_labels,dim=1), torch.argmax(true_labels, dim=1), num_classes=3, n_bins=15, norm='l1')
+        metric = multiclass_calibration_error(torch.softmax(predicted_labels,dim=1), 
+                                              torch.argmax(true_labels, dim=1), 
+                                              num_classes=3, n_bins=15, norm='l1')
         return metric
