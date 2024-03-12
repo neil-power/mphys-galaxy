@@ -62,8 +62,6 @@ class ChiralityClassifier(pl.LightningModule):
         self.optimizer = self.optimizers[optimizer]
         self.scheduler = self.schedulers[scheduler]
         self.loss_fn = nn.CrossEntropyLoss()
-        self.acc = self.accuracy_metric
-        self.ece = self.ece_metric
         self.model = self.model_versions[model_version](num_classes=num_classes)
         if weights is not None:
             self.load_state_dict(torch.load(weights))
@@ -138,7 +136,7 @@ class ChiralityClassifier(pl.LightningModule):
          ax.tick_params(axis='both', which='minor', labelsize=10)
          plt.savefig(self.graph_save_path)
 
-    def accuracy_metric(self,predicted_labels,true_labels):
+    def acc(self,predicted_labels,true_labels):
         true_highest_prob = torch.argmax(true_labels, dim=1)
         predicted_highest_prob = torch.argmax(predicted_labels, dim=1)   
 
@@ -146,7 +144,6 @@ class ChiralityClassifier(pl.LightningModule):
         test_accuracy = matches/true_highest_prob.shape[0]
         return test_accuracy
     
-    def ece_metric(self,predicted_labels,true_labels):
-        metric = multiclass_calibration_error(predicted_labels, torch.argmax(true_labels, dim=1), num_classes=3, n_bins=3, norm='l1')
+    def ece(self,predicted_labels,true_labels):
+        metric = multiclass_calibration_error(torch.softmax(predicted_labels), torch.argmax(true_labels, dim=1), num_classes=3, n_bins=15, norm='l1')
         return metric
-
