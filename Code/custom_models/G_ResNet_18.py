@@ -315,3 +315,7 @@ class G_ResNet18(torch.nn.Module):
         out = self.linear(out)
 
         return out #, gpool_out
+
+    def state_dict(self,*args, **kwargs): #Issue with saving state dictionary if eval is not called
+        self.eval()
+        return super().state_dict(*args, **kwargs)
