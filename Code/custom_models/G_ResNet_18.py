@@ -316,6 +316,12 @@ class G_ResNet18(torch.nn.Module):
 
         return out #, gpool_out
 
-    def state_dict(self,*args, **kwargs): #Issue with saving state dictionary if eval is not called
+    def state_dict(self,*args, **kwargs):
+        #Issue with saving state dictionary if eval is not called
+        in_train_mode = self.training
         self.eval()
-        return super().state_dict(*args, **kwargs)
+        state_dictionary = super().state_dict(*args, **kwargs)
+
+        if in_train_mode: #If model was previously in train mode, return to train mode
+            self.train()
+        return state_dictionary
