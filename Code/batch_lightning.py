@@ -6,6 +6,7 @@
 
 # %%
 import os
+import gc
 from enum import Enum
 import pandas as pd
 import torch
@@ -28,17 +29,17 @@ class modes(Enum):
     LOCAL_SUBSET = 3 #Use local cache of 1500 galaxies
 
 IMG_SIZE = 160 # This is the output size of the generated image array
-MODE = modes.CUT_DATASET
-RUN_TEST = False #Run on testing dataset & save metrics
+MODE = modes.CUT_DATASET #Select which dataset to run
+TEST_PRETRAINED_MODEL = False #Load and run testing dataset & save metrics
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
-#jiaresnet50,LeNet,
-#G_ResNet18,G_LeNet,
-MODEL_NAME = 'resnet50'
-CUSTOM_ID = 'repeat'
-USE_TENSORBOARD = False
-SAVE_MODEL = False
-REPEAT_RUNS = 5 #Set to 0 for 1 run
+#jiaresnet50,LeNet,G_ResNet18,G_LeNet,
+MODEL_NAME = "G_ResNet18"
+CUSTOM_ID = ""
+
+USE_TENSORBOARD = False #Log to tensorboard as well as csv logger
+SAVE_MODEL = True #Save model weights to .pt file
+REPEAT_RUNS = 1 #Set to 1 for 1 run
 
 #For .py files
 METRICS_PATH = "/share/nas2/npower/mphys-galaxy/Metrics"
@@ -54,7 +55,11 @@ BEST_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_
 LOCAL_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_local_subset.csv'
 
 torch.set_float32_matmul_precision("medium")
-MODEL_ID = f"{MODEL_NAME}_{MODE.name.lower()}_{CUSTOM_ID}"
+if len(CUSTOM_ID) == 0:
+    MODEL_ID = f"{MODEL_NAME}_{MODE.name.lower()}"
+else:
+     MODEL_ID = f"{MODEL_NAME}_{MODE.name.lower()}_{CUSTOM_ID}"
+PRETRAINED_MODEL_PATH = f"{METRICS_PATH}/{MODEL_ID}/version_{0}/model.pt"
 
 # %% [markdown]
 # ## GPU Test
@@ -117,7 +122,7 @@ if MODE == modes.CUT_DATASET:
         label_cols=['P_CW','P_ACW','P_OTHER'],
         train_catalog=train_catalog, val_catalog=train_catalog, test_catalog=test_catalog,
         custom_albumentation_transform=generate_transforms(),
-        batch_size=200,
+        batch_size=100,
         num_workers=11,
     )
     
@@ -152,10 +157,9 @@ datamodule.setup()
 
 # %%
 for run in range(0,REPEAT_RUNS):
-
+    
     save_dir = f"{METRICS_PATH}/{MODEL_ID}/version_{run}"
     check_folder(save_dir)
-
 
     model = ChiralityClassifier(
         num_classes=(2 if (MODEL_NAME=="jiaresnet50") else 3), #2 for Jia et al version
@@ -166,8 +170,7 @@ for run in range(0,REPEAT_RUNS):
         weight_decay=0,
         step_size=5,
         gamma=0.85,
-        batch_size=60,
-        weights=None,
+        weights=(PRETRAINED_MODEL_PATH if TEST_PRETRAINED_MODEL else None),
         model_save_path=f"{save_dir}/model.pt",
         graph_save_path=f"{save_dir}/matrix.png"
     )
@@ -180,19 +183,30 @@ for run in range(0,REPEAT_RUNS):
         max_epochs=60,
         devices=1,
         logger=([tb_logger,csv_logger] if USE_TENSORBOARD else csv_logger),
-        default_root_dir=f'{LOG_PATH}/{MODEL_ID}'
+        default_root_dir=f"{LOG_PATH}/{MODEL_ID}",
+        enable_checkpointing=False,
         #profiler="pytorch"
         #callbacks=EarlyStopping(monitor="val_loss", mode="min")
     )
 
     #compiled_model = torch.compile(model, backend="eager")
-    trainer.fit(model,train_dataloaders=datamodule.train_dataloader(),val_dataloaders=datamodule.val_dataloader())
+    
+    if TEST_PRETRAINED_MODEL:
+        trainer.test(model,dataloaders=datamodule.test_dataloader())    
 
-    if RUN_TEST:
-        trainer.test(model,dataloaders=datamodule.test_dataloader())
     else:
+        trainer.fit(model,train_dataloaders=datamodule.train_dataloader(),val_dataloaders=datamodule.val_dataloader())
         trainer.test(model,dataloaders=datamodule.val_dataloader())
 
-    if SAVE_MODEL:
-        torch.save(trainer.model.state_dict(), model.model_save_path)
+        if SAVE_MODEL:
+            torch.save(trainer.model.state_dict(), model.model_save_path)
 
+
+# %%
+#Dereference all objects, clear cuda cache and run garbage collection
+datamodule=None
+model=None
+trainer=None
+with torch.no_grad():
+    torch.cuda.empty_cache()
+gc.collect()
