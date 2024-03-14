@@ -4,3 +4,4 @@ Code/lightning_logs
 *.pyc
 logs
 lightning_logs
+Data/desi_data_full.csv
