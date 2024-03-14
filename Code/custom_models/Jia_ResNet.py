@@ -77,3 +77,8 @@ def JiaResnet50(**kwargs: Any) -> JiaResnet:
     model = JiaResnet(block=Bottleneck, layers=[3, 4, 6, 3], use_max_pool=True,
      use_avg_pool=True, avg_pool_size=(1, 1), add_fc=[512, 512, 64, 64],**kwargs)
     return model
+
+def JiaResnet18(**kwargs: Any) -> JiaResnet:
+    model = JiaResnet(block=BasicBlock, layers=[2, 2, 2, 2], use_max_pool=True,
+     use_avg_pool=True, avg_pool_size=(1, 1), add_fc=[512, 512, 64, 64],**kwargs)
+    return model
