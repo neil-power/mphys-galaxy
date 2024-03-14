@@ -14,52 +14,71 @@ from torch.utils.data import random_split
 import lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger,CSVLogger
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-import albumentations as A
-from galaxy_datasets.pytorch.galaxy_datamodule import GalaxyDataModule
+
+
 from ChiralityClassifier import ChiralityClassifier
+from dataset_utils import *
 
 # %% [markdown]
 # ## Options
 
 # %%
-class modes(Enum):
-    FULL_DATASET = 0 #Use all 600,000 galaxies
+class datasets(Enum):
+    FULL_DATASET = 0 #Use all 600,000 galaxies in GZ1 catalog
     CUT_DATASET = 1 #Use cut of 200,000 galaxies, with pre-selected test data and downsampled train data
     BEST_SUBSET = 2 #Select N best S,Z & other galaxies, evenly split
     LOCAL_SUBSET = 3 #Use local cache of 1500 galaxies
+    FULL_DESI_DATASET = 4 #Use all 7 million galaxies in DESI catalog, minus those that appear in cut catalog
 
-IMG_SIZE = 160 # This is the output size of the generated image array
-MODE = modes.CUT_DATASET #Select which dataset to run
-TEST_PRETRAINED_MODEL = False #Load and run testing dataset & save metrics
+class modes(Enum):
+    TRAIN = 0 #Train on a dataset
+    TEST = 1 #Test an existing saved model on a dataset
+    PREDICT = 2 #Use an existing saved model on an unlabelled dataset
+
+DATASET = datasets.CUT_DATASET #Select which dataset to run
+MODE = modes.TEST #Select which mode
+
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #jiaresnet50,LeNet,G_ResNet18,G_LeNet,
-MODEL_NAME = "G_ResNet18"
+MODEL_NAME = "jiaresnet50"
 CUSTOM_ID = ""
 
 USE_TENSORBOARD = False #Log to tensorboard as well as csv logger
-SAVE_MODEL = True #Save model weights to .pt file
+SAVE_MODEL = False #Save model weights to .pt file
 REPEAT_RUNS = 1 #Set to 1 for 1 run
+IMG_SIZE = 160 #This is the output size of the generated image array
+BATCH_SIZE = 100 #Number of images per batch
+NUM_WORKERS = 11 #Number of workers in dataloader (no of CPU cores - 1)
 
-#For .py files
-METRICS_PATH = "/share/nas2/npower/mphys-galaxy/Metrics"
-LOG_PATH = "/share/nas2/npower/mphys-galaxy/Code/lightning_logs"
-
-FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg'
-LOCAL_SUBSET_DATA_PATH = '/share/nas2/npower/mphys-galaxy/Data/Subset'
-
-FULL_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat.csv'
-CUT_CATALOG_TEST_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_testing.csv'
-CUT_CATALOG_TRAIN_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_train_val_downsample.csv'
-BEST_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_best_subset.csv'
-LOCAL_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_local_subset.csv'
+PATHS = dict(
+    METRICS_PATH = "/share/nas2/npower/mphys-galaxy/Metrics",
+    LOG_PATH = "/share/nas2/npower/mphys-galaxy/Code/lightning_logs",
+    FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg',
+    LOCAL_SUBSET_DATA_PATH = '/share/nas2/npower/mphys-galaxy/Data/Subset',
+    FULL_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat.csv',
+    CUT_CATALOG_TEST_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_testing.csv',
+    CUT_CATALOG_TRAIN_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_train_val_downsample.csv',
+    BEST_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_best_subset.csv',
+    LOCAL_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_local_subset.csv',
+)
 
 torch.set_float32_matmul_precision("medium")
 if len(CUSTOM_ID) == 0:
-    MODEL_ID = f"{MODEL_NAME}_{MODE.name.lower()}"
+    MODEL_ID = f"{MODEL_NAME}_{DATASET.name.lower()}"
 else:
-     MODEL_ID = f"{MODEL_NAME}_{MODE.name.lower()}_{CUSTOM_ID}"
-PRETRAINED_MODEL_PATH = f"{METRICS_PATH}/{MODEL_ID}/version_{0}/model.pt"
+     MODEL_ID = f"{MODEL_NAME}_{DATASET.name.lower()}_{CUSTOM_ID}"
+
+PRETRAINED_MODEL_PATH = f"{PATHS['METRICS_PATH']}/{MODEL_ID}/version_{0}/model.pt"
+if MODE != modes.TRAIN:
+    USE_TENSORBOARD = False #Don"t log to tensorboard if not training
+    SAVE_MODEL = False #Don"t save weights if testing or predicting model
+    REPEAT_RUNS = 1 #Don"t repeat runs if if testing or predicting model
+
+#For .py files
+
+
+
 
 # %% [markdown]
 # ## GPU Test
@@ -78,75 +97,7 @@ print('Using device:', device)
 
 # %% [markdown]
 # ### Building catalog
-
-# %%
-def get_file_paths(catalog_to_convert,folder_path):
-    brick_ids = catalog_to_convert['dr8_id'].str.split("_",expand=True)[0]
-    dr8_ids = catalog_to_convert['dr8_id']
-    file_locations = folder_path+'/'+brick_ids+'/'+dr8_ids+'.jpg'
-    print(f"Created {file_locations.shape[0]} galaxy filepaths")
-    return file_locations
-
-def check_folder(save_dir):
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-
-def generate_transforms(resize_after_crop=IMG_SIZE):
-    transforms_to_apply = [
-        A.ToFloat(), #Converts from 0-255 to 0-1
-
-        A.Resize( #Resizes to 160x160
-            height=resize_after_crop,
-            width=resize_after_crop,
-            interpolation=1,
-            always_apply=True
-        ),
-    ]
-    return A.Compose(transforms_to_apply)
-
-# %% [markdown]
-# ### Merging non-S/Z galaxies
-
-# %%
-if MODE == modes.CUT_DATASET:
-    train_val_catalog = pd.read_csv(CUT_CATALOG_TRAIN_PATH)
-    train_val_catalog['file_loc'] = get_file_paths(train_val_catalog,FULL_DATA_PATH)
-    generator1 = torch.Generator().manual_seed(42) #Preset test-val split, note test dataloader will still shuffle
-    train_catalog, val_catalog = random_split(train_val_catalog, [0.20,0.80], generator=generator1)
-    train_catalog = train_catalog.dataset.iloc[train_catalog.indices]
-    val_catalog = val_catalog.dataset.iloc[val_catalog.indices]   
-    test_catalog = pd.read_csv(CUT_CATALOG_TEST_PATH)
-    test_catalog['file_loc'] = get_file_paths(test_catalog,FULL_DATA_PATH)
-
-    datamodule = GalaxyDataModule(
-        label_cols=['P_CW','P_ACW','P_OTHER'],
-        train_catalog=train_catalog, val_catalog=train_catalog, test_catalog=test_catalog,
-        custom_albumentation_transform=generate_transforms(),
-        batch_size=100,
-        num_workers=11,
-    )
-    
-else:
-    if MODE == modes.FULL_DATASET:
-        catalog = pd.read_csv(FULL_CATALOG_PATH)
-        catalog['file_loc'] = get_file_paths(catalog,FULL_DATA_PATH)
-
-    elif MODE == modes.BEST_SUBSET:
-        catalog = pd.read_csv(BEST_SUBSET_CATALOG_PATH)
-        catalog['file_loc'] = get_file_paths(catalog,FULL_DATA_PATH)
-
-    elif MODE == modes.LOCAL_SUBSET:
-        catalog = pd.read_csv(LOCAL_SUBSET_CATALOG_PATH)
-        catalog['file_loc'] = get_file_paths(catalog,LOCAL_SUBSET_DATA_PATH)
-
-    datamodule = GalaxyDataModule(
-        label_cols=['P_CW','P_ACW','P_OTHER'],
-        catalog=catalog,
-        train_fraction=0.7, val_fraction=0.15, test_fraction=0.15,
-        custom_albumentation_transform=generate_transforms(),
-        batch_size=100,
-        num_workers=11,
-    )
+datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS)
 
 # %% [markdown]
 # ## Code to run
@@ -158,8 +109,8 @@ datamodule.setup()
 # %%
 for run in range(0,REPEAT_RUNS):
     
-    save_dir = f"{METRICS_PATH}/{MODEL_ID}/version_{run}"
-    check_folder(save_dir)
+    save_dir = f"{PATHS['METRICS_PATH']}/{MODEL_ID}/version_{run}"
+    create_folder(save_dir)
 
     model = ChiralityClassifier(
         num_classes=(2 if (MODEL_NAME=="jiaresnet50") else 3), #2 for Jia et al version
@@ -170,20 +121,19 @@ for run in range(0,REPEAT_RUNS):
         weight_decay=0,
         step_size=5,
         gamma=0.85,
-        weights=(PRETRAINED_MODEL_PATH if TEST_PRETRAINED_MODEL else None),
+        weights=(PRETRAINED_MODEL_PATH if MODE != modes.TRAIN else None),
         model_save_path=f"{save_dir}/model.pt",
-        graph_save_path=f"{save_dir}/matrix.png"
+        graph_save_path=(f"{save_dir}/val_matrix.png" if MODE == modes.TRAIN else f"{save_dir}/{MODE.name.lower()}_matrix.png")
     )
 
-    tb_logger = TensorBoardLogger(LOG_PATH, name=MODEL_ID,version=run)
-    csv_logger = CSVLogger(LOG_PATH,name=MODEL_ID,version=run)
-
+    tb_logger = TensorBoardLogger(PATHS["LOG_PATH"], name=MODEL_ID,version=(f"{run}_val" if MODE == modes.TRAIN else f"{run}_{MODE.name.lower()}"))
+    csv_logger = CSVLogger(PATHS["LOG_PATH"],name=MODEL_ID,version=(f"{run}_val" if MODE == modes.TRAIN else f"{run}_{MODE.name.lower()}"))
     trainer = pl.Trainer(
         accelerator=("gpu" if device.type=="cuda" else "cpu"),
         max_epochs=60,
         devices=1,
         logger=([tb_logger,csv_logger] if USE_TENSORBOARD else csv_logger),
-        default_root_dir=f"{LOG_PATH}/{MODEL_ID}",
+        default_root_dir=f"{PATHS['LOG_PATH']}/{MODEL_ID}",
         enable_checkpointing=False,
         #profiler="pytorch"
         #callbacks=EarlyStopping(monitor="val_loss", mode="min")
@@ -191,15 +141,18 @@ for run in range(0,REPEAT_RUNS):
 
     #compiled_model = torch.compile(model, backend="eager")
     
-    if TEST_PRETRAINED_MODEL:
-        trainer.test(model,dataloaders=datamodule.test_dataloader())    
-
-    else:
+    if MODE==modes.TRAIN:
         trainer.fit(model,train_dataloaders=datamodule.train_dataloader(),val_dataloaders=datamodule.val_dataloader())
         trainer.test(model,dataloaders=datamodule.val_dataloader())
 
         if SAVE_MODEL:
             torch.save(trainer.model.state_dict(), model.model_save_path)
+        
+    elif MODE==modes.TEST:
+        trainer.test(model,dataloaders=datamodule.test_dataloader())
+           
+    elif MODE==modes.PREDICT:
+        trainer.predict(model,dataloaders=datamodule.predict_dataloader())        
 
 
 # %%
