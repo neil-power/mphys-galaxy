@@ -25,6 +25,16 @@ def create_folder(save_dir):
 
 # ---------------------------------------------------------------------------------
 
+def save_metrics_from_logger(model_id,version,mode,log_path,metrics_path):
+    metrics = pd.read_csv(f"{log_path}/{model_id}/version_{version}/metrics.csv")
+    metrics = metrics.drop(['train_loss_step',	'train_acc_step',	'train_calibration_error_step'],axis=1)
+    metrics = metrics.groupby(metrics['epoch']).first()
+    save_dir = f"{metrics_path}/{model_id}/version_{version}"
+    create_folder(save_dir)
+    metrics.to_csv(f"{save_dir}/{mode}_metrics.csv")
+
+# ---------------------------------------------------------------------------------
+
 def generate_transforms(resize_after_crop=160):
     transforms_to_apply = [
         A.ToFloat(), #Converts from 0-255 to 0-1
@@ -92,3 +102,15 @@ def generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NU
                 batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
             )
     return datamodule
+
+# ---------------------------------------------------------------------------------
+
+def get_device():
+    print(f"Using pytorch {torch.__version__}. CPU cores available on device: {os.cpu_count()}")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type == "cuda":
+        print(torch.cuda.get_device_name(0))
+        print(f"Allocated Memory: {round(torch.cuda.memory_allocated(0)/1024**3,1)} GB")
+        print(f"Cached Memory: {round(torch.cuda.memory_reserved(0)/1024**3,1)} GB")
+    print("Using device:", device)
+    return device
