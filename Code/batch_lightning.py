@@ -37,12 +37,12 @@ MODE = modes.TRAIN #Select which mode
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #jiaresnet50,LeNet,G_ResNet18,G_LeNet,
-MODEL_NAME = "resnet18"
-CUSTOM_ID = "repeat"
+MODEL_NAME = "G_ResNet18"
+CUSTOM_ID = "flip_eq"
 
 USE_TENSORBOARD = False #Log to tensorboard as well as csv logger
 SAVE_MODEL = True #Save model weights to .pt file
-REPEAT_RUNS = 5 #Set to 1 for 1 run
+REPEAT_RUNS = 1 #Set to 1 for 1 run
 IMG_SIZE = 160 #This is the output size of the generated image array
 BATCH_SIZE = 100 #Number of images per batch
 NUM_WORKERS = 11 #Number of workers in dataloader (no of CPU cores - 1)
