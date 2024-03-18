@@ -139,7 +139,12 @@ for run in range(0,REPEAT_RUNS):
         trainer.test(model,dataloaders=datamodule.test_dataloader())
            
     elif MODE==modes.PREDICT:
-        trainer.predict(model,dataloaders=datamodule.predict_dataloader())        
+        trainer.predict(model,dataloaders=datamodule.predict_dataloader())   
+
+    #Save cleaned up logs file to Metrics folder & save graph
+    save_metrics_from_logger(MODEL_ID,PATHS["LOG_PATH"],PATHS['METRICS_PATH'],version=run,mode=MODE.name.lower(),save=True)  
+    if MODE==modes.TRAIN:
+        plot_train_metrics(MODEL_ID,PATHS['METRICS_PATH'],version=run,show=False,save=True)     
 
 # %%
 #Dereference all objects, clear cuda cache and run garbage collection

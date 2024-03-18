@@ -2,7 +2,6 @@
 
 import os
 import pandas as pd
-import numpy as np
 import torch
 from torch.utils.data import random_split
 import albumentations as A
@@ -25,16 +24,6 @@ def create_folder(save_dir):
 
 # ---------------------------------------------------------------------------------
 
-def save_metrics_from_logger(model_id,version,mode,log_path,metrics_path):
-    metrics = pd.read_csv(f"{log_path}/{model_id}/version_{version}/metrics.csv")
-    metrics = metrics.drop(['train_loss_step',	'train_acc_step',	'train_calibration_error_step'],axis=1)
-    metrics = metrics.groupby(metrics['epoch']).first()
-    save_dir = f"{metrics_path}/{model_id}/version_{version}"
-    create_folder(save_dir)
-    metrics.to_csv(f"{save_dir}/{mode}_metrics.csv")
-
-# ---------------------------------------------------------------------------------
-
 def generate_transforms(resize_after_crop=160):
     transforms_to_apply = [
         A.ToFloat(), #Converts from 0-255 to 0-1
@@ -45,8 +34,6 @@ def generate_transforms(resize_after_crop=160):
             interpolation=1,
             always_apply=True
         ),
-
-        #A.randomrotate
     ]
     return A.Compose(transforms_to_apply)
 
