@@ -5,16 +5,12 @@
 # ## Imports
 
 # %%
-import os
 import gc
 from enum import Enum
-import pandas as pd
 import torch
-from torch.utils.data import random_split
 import lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger,CSVLogger
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-
 
 from ChiralityClassifier import ChiralityClassifier
 from dataset_utils import *
@@ -28,7 +24,7 @@ class datasets(Enum):
     CUT_DATASET = 1 #Use cut of 200,000 galaxies, with pre-selected test data and downsampled train data
     BEST_SUBSET = 2 #Select N best S,Z & other galaxies, evenly split
     LOCAL_SUBSET = 3 #Use local cache of 1500 galaxies
-    FULL_DESI_DATASET = 4 #Use all 7 million galaxies in DESI catalog, minus those that appear in cut catalog
+    FULL_DESI_DATASET = 4 #Use all 7 million galaxies in DESI catalog, minus those that appear in cut catalog (predict only)
 
 class modes(Enum):
     TRAIN = 0 #Train on a dataset
@@ -36,17 +32,17 @@ class modes(Enum):
     PREDICT = 2 #Use an existing saved model on an unlabelled dataset
 
 DATASET = datasets.CUT_DATASET #Select which dataset to run
-MODE = modes.TEST #Select which mode
+MODE = modes.TRAIN #Select which mode
 
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #jiaresnet50,LeNet,G_ResNet18,G_LeNet,
-MODEL_NAME = "jiaresnet50"
-CUSTOM_ID = ""
+MODEL_NAME = "resnet18"
+CUSTOM_ID = "repeat"
 
 USE_TENSORBOARD = False #Log to tensorboard as well as csv logger
-SAVE_MODEL = False #Save model weights to .pt file
-REPEAT_RUNS = 1 #Set to 1 for 1 run
+SAVE_MODEL = True #Save model weights to .pt file
+REPEAT_RUNS = 5 #Set to 1 for 1 run
 IMG_SIZE = 160 #This is the output size of the generated image array
 BATCH_SIZE = 100 #Number of images per batch
 NUM_WORKERS = 11 #Number of workers in dataloader (no of CPU cores - 1)
@@ -73,24 +69,12 @@ PRETRAINED_MODEL_PATH = f"{PATHS['METRICS_PATH']}/{MODEL_ID}/version_{0}/model.p
 if MODE != modes.TRAIN:
     USE_TENSORBOARD = False #Don"t log to tensorboard if not training
     SAVE_MODEL = False #Don"t save weights if testing or predicting model
-    REPEAT_RUNS = 1 #Don"t repeat runs if if testing or predicting model
-
-#For .py files
-
-
-
-
+    REPEAT_RUNS = 1 #Don't repeat runs if testing or predicting model
 # %% [markdown]
 # ## GPU Test
 
 # %%
-print(f"Using pytorch {torch.__version__}. CPU cores available on device: {os.cpu_count()}")
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-if device.type == 'cuda':
-    print(torch.cuda.get_device_name(0))
-    print(f'Allocated Memory: {round(torch.cuda.memory_allocated(0)/1024**3,1)} GB')
-    print(f'Cached Memory: {round(torch.cuda.memory_reserved(0)/1024**3,1)} GB')
-print('Using device:', device)
+device = get_device()
 
 # %% [markdown]
 # ## Reading in data
@@ -104,7 +88,10 @@ datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATC
 
 # %%
 datamodule.prepare_data()
-datamodule.setup()
+if MODE == modes.PREDICT:
+    datamodule.setup(stage='predict')
+else:
+    datamodule.setup()
 
 # %%
 for run in range(0,REPEAT_RUNS):
@@ -126,8 +113,8 @@ for run in range(0,REPEAT_RUNS):
         graph_save_path=(f"{save_dir}/val_matrix.png" if MODE == modes.TRAIN else f"{save_dir}/{MODE.name.lower()}_matrix.png")
     )
 
-    tb_logger = TensorBoardLogger(PATHS["LOG_PATH"], name=MODEL_ID,version=(f"{run}_val" if MODE == modes.TRAIN else f"{run}_{MODE.name.lower()}"))
-    csv_logger = CSVLogger(PATHS["LOG_PATH"],name=MODEL_ID,version=(f"{run}_val" if MODE == modes.TRAIN else f"{run}_{MODE.name.lower()}"))
+    tb_logger = TensorBoardLogger(PATHS["LOG_PATH"], name=MODEL_ID,version=f"version_{run}_{MODE.name.lower()}")
+    csv_logger = CSVLogger(PATHS["LOG_PATH"],name=MODEL_ID,version=f"version_{run}_{MODE.name.lower()}")
     trainer = pl.Trainer(
         accelerator=("gpu" if device.type=="cuda" else "cpu"),
         max_epochs=60,
@@ -153,7 +140,6 @@ for run in range(0,REPEAT_RUNS):
            
     elif MODE==modes.PREDICT:
         trainer.predict(model,dataloaders=datamodule.predict_dataloader())        
-
 
 # %%
 #Dereference all objects, clear cuda cache and run garbage collection
