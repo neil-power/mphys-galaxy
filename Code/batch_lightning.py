@@ -14,6 +14,7 @@ from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
 from ChiralityClassifier import ChiralityClassifier
 from dataset_utils import *
+from metrics_utils import *
 
 # %% [markdown]
 # ## Options
@@ -65,11 +66,9 @@ if len(CUSTOM_ID) == 0:
 else:
      MODEL_ID = f"{MODEL_NAME}_{DATASET.name.lower()}_{CUSTOM_ID}"
 
-PRETRAINED_MODEL_PATH = f"{PATHS['METRICS_PATH']}/{MODEL_ID}/version_{0}/model.pt"
 if MODE != modes.TRAIN:
     USE_TENSORBOARD = False #Don"t log to tensorboard if not training
     SAVE_MODEL = False #Don"t save weights if testing or predicting model
-    REPEAT_RUNS = 1 #Don't repeat runs if testing or predicting model
 # %% [markdown]
 # ## GPU Test
 
@@ -97,6 +96,7 @@ else:
 for run in range(0,REPEAT_RUNS):
     
     save_dir = f"{PATHS['METRICS_PATH']}/{MODEL_ID}/version_{run}"
+    MODEL_PATH = f"{save_dir}/model.pt"
     create_folder(save_dir)
 
     model = ChiralityClassifier(
@@ -108,8 +108,7 @@ for run in range(0,REPEAT_RUNS):
         weight_decay=0,
         step_size=5,
         gamma=0.85,
-        weights=(PRETRAINED_MODEL_PATH if MODE != modes.TRAIN else None),
-        model_save_path=f"{save_dir}/model.pt",
+        weights=(MODEL_PATH if MODE != modes.TRAIN else None),
         graph_save_path=(f"{save_dir}/val_matrix.png" if MODE == modes.TRAIN else f"{save_dir}/{MODE.name.lower()}_matrix.png")
     )
 
@@ -133,7 +132,7 @@ for run in range(0,REPEAT_RUNS):
         trainer.test(model,dataloaders=datamodule.val_dataloader())
 
         if SAVE_MODEL:
-            torch.save(trainer.model.state_dict(), model.model_save_path)
+            torch.save(trainer.model.state_dict(), MODEL_PATH)
         
     elif MODE==modes.TEST:
         trainer.test(model,dataloaders=datamodule.test_dataloader())

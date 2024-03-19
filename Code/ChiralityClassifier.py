@@ -49,7 +49,6 @@ class ChiralityClassifier(pl.LightningModule):
         batch_size=16,
         weights=None,
         graph_save_path='',
-        model_save_path = ''
     ):
         super().__init__()
 
@@ -69,7 +68,6 @@ class ChiralityClassifier(pl.LightningModule):
         self.test_y_predicted = []
         self.test_y_true = []
         self.graph_save_path = graph_save_path
-        self.model_save_path = model_save_path
 
     def forward(self, X):
         return self.model(X)
