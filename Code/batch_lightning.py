@@ -33,12 +33,12 @@ class modes(Enum):
     PREDICT = 2 #Use an existing saved model on an unlabelled dataset
 
 DATASET = datasets.CUT_DATASET #Select which dataset to run
-MODE = modes.TEST #Select which mode
+MODE = modes.TRAIN #Select which mode
 
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
-#jiaresnet50,LeNet,G_ResNet18,G_LeNet,
-MODEL_NAME = "resnet18"
+#jiaresnet50,lenet,g_resnet18,g_lenet,
+MODEL_NAME = "g_lenet"
 CUSTOM_ID = "repeat"
 
 USE_TENSORBOARD = False #Log to tensorboard as well as csv logger
@@ -72,7 +72,7 @@ if MODE != modes.TRAIN:
 # %% [markdown]
 # ## GPU Test
 
-# %%
+# %% 
 device = get_device()
 
 # %% [markdown]

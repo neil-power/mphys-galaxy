@@ -29,9 +29,9 @@ class ChiralityClassifier(pl.LightningModule):
         "resnet101": models.resnet101,
         "resnet152": models.resnet152,
         "jiaresnet50": JiaResnet50,
-        "G_ResNet18": G_ResNet18,
-        "LeNet": VanillaLeNet,
-        "G_LeNet": CNSteerableLeNet
+        "g_resnet18": G_ResNet18,
+        "lenet": VanillaLeNet,
+        "g_lenet": CNSteerableLeNet
     }
     optimizers = {"adamw": optim.AdamW, "sgd": optim.SGD}
     schedulers = {"steplr": optim.lr_scheduler.StepLR}
@@ -137,12 +137,6 @@ class ChiralityClassifier(pl.LightningModule):
          ax.tick_params(axis='both', which='major', labelsize=12)
          ax.tick_params(axis='both', which='minor', labelsize=10)
          plt.savefig(self.graph_save_path)
-
-    # def predict_step(self, batch, batch_idx):
-    #     #x, y = batch 
-    #     preds = self(batch)
-    #     t_val = self.chirality_violation(preds)
-    #     return preds, t_val
 
     def acc(self,predicted_labels,true_labels):
         true_highest_prob = torch.argmax(true_labels, dim=1)

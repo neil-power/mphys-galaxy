@@ -86,3 +86,13 @@ class CNSteerableLeNet(nn.Module):
         x = self.fc3(x)
     
         return x
+
+    def state_dict(self,*args, **kwargs):
+        #Issue with saving state dictionary if eval is not called
+        in_train_mode = self.training
+        self.eval()
+        state_dictionary = super().state_dict(*args, **kwargs)
+
+        if in_train_mode: #If model was previously in train mode, return to train mode
+            self.train()
+        return state_dictionary
