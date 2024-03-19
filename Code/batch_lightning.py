@@ -33,7 +33,7 @@ class modes(Enum):
     PREDICT = 2 #Use an existing saved model on an unlabelled dataset
 
 DATASET = datasets.CUT_DATASET #Select which dataset to run
-MODE = modes.TRAIN #Select which mode
+MODE = modes.TEST #Select which mode
 
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
