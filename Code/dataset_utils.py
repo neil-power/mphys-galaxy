@@ -1,6 +1,7 @@
 ## Utilities used for data processing and data loading
 
 import os
+import math
 import pandas as pd
 import torch
 from torch.utils.data import random_split
@@ -22,6 +23,19 @@ def create_folder(save_dir):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
+# ---------------------------------------------------------------------------------
+        
+def get_filepath_by_id(dr8_id,folder_path):
+    brick_id = dr8_id.split('_')[0]
+    file_loc = f"{folder_path}/{brick_id}/{dr8_id}.jpg"
+    return file_loc
+
+# ---------------------------------------------------------------------------------
+
+def split_dataframe(data, no_of_batches):
+    batch_size = math.ceil(data.shape[0] / no_of_batches)
+    batched_df = [data[i:i+batch_size] for i in range(0,data.shape[0], batch_size)]
+    return batched_df
 # ---------------------------------------------------------------------------------
 
 def generate_transforms(resize_after_crop=160):
