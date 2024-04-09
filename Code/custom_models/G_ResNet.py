@@ -249,8 +249,8 @@ class G_ResNet(torch.nn.Module):
         """
         super(G_ResNet, self).__init__()
 
-        #nStages = [64, 64, 128, 256, 512]
-        nStages = [16,16,32,64,128]
+        nStages = [64, 64, 128, 256, 512]
+        #nStages = [16,16,32,64,128]
 
         self._fixparams = fixparams
 
