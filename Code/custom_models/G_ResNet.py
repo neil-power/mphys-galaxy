@@ -6,6 +6,7 @@ from torch import Tensor
 import torchvision.models.resnet as rn
 from escnn import nn as enn
 from escnn import gspaces
+#from escnn.examples 
 
 #Define convolutional layers -----------------------------------------------------------------------------------------------------
 
