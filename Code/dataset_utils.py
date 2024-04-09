@@ -76,7 +76,7 @@ def generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NU
             catalog["file_loc"] = get_file_paths(catalog,PATHS["FULL_DATA_PATH"])
 
         if DATASET == datasets.FULL_DESI_DATASET:
-            catalog = pd.read_csv(PATHS["FULL_DESI_CATALOG_PATH"])
+            catalog = pd.read_parquet(PATHS["FULL_DESI_CATALOG_PATH"])
             catalog["file_loc"] = get_file_paths(catalog,PATHS["FULL_DATA_PATH"])
 
         elif DATASET == datasets.BEST_SUBSET:

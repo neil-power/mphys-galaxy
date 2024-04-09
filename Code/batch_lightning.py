@@ -32,21 +32,27 @@ class modes(Enum):
     TEST = 1 #Test an existing saved model on a dataset
     PREDICT = 2 #Use an existing saved model on an unlabelled dataset
 
-DATASET = datasets.CUT_DATASET #Select which dataset to run
-MODE = modes.TEST #Select which mode
+DATASET = datasets.CUT_DATASET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
+MODE = modes.PREDICT #Select which mode
+
+PREDICT_DATASET = datasets.FULL_DESI_DATASET #If predicting, predict this dataset
 
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #jiaresnet50,lenet,g_resnet18,g_lenet,
-MODEL_NAME = "g_lenet"
-CUSTOM_ID = "repeat"
+MODEL_NAME = "resnet18"
+CUSTOM_ID = ""
 
 USE_TENSORBOARD = False #Log to tensorboard as well as csv logger
-SAVE_MODEL = True #Save model weights to .pt file
-REPEAT_RUNS = 5 #Set to 1 for 1 run
+SAVE_MODEL = False #Save model weights to .pt file
+REPEAT_RUNS = 1 #Set to 1 for 1 run
 IMG_SIZE = 160 #This is the output size of the generated image array
+NUM_WORKERS = 11 #Number of workers in dataloader (usually set to no of CPU cores - 1)
+
+#HYPERPARAMS
 BATCH_SIZE = 100 #Number of images per batch
-NUM_WORKERS = 11 #Number of workers in dataloader (no of CPU cores - 1)
+LEARNING_RATE = 0.0001
+MAX_EPOCHS = 60
 
 PATHS = dict(
     METRICS_PATH = "/share/nas2/npower/mphys-galaxy/Metrics",
@@ -54,6 +60,7 @@ PATHS = dict(
     FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg',
     LOCAL_SUBSET_DATA_PATH = '/share/nas2/npower/mphys-galaxy/Data/Subset',
     FULL_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat.csv',
+    FULL_DESI_CATALOG_PATH =  '/share/nas2/npower/mphys-galaxy/Data/desi_full_cat.parquet',
     CUT_CATALOG_TEST_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_testing.csv',
     CUT_CATALOG_TRAIN_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_train_val_downsample.csv',
     BEST_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_best_subset.csv',
@@ -77,19 +84,13 @@ device = get_device()
 
 # %% [markdown]
 # ## Reading in data
-
-# %% [markdown]
-# ### Building catalog
-datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS)
-
-# %% [markdown]
-# ## Code to run
-
-# %%
-datamodule.prepare_data()
 if MODE == modes.PREDICT:
+    datamodule = generate_datamodule(PREDICT_DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS)
+    datamodule.prepare_data()
     datamodule.setup(stage='predict')
 else:
+    datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS)
+    datamodule.prepare_data()
     datamodule.setup()
 
 # %%
@@ -104,7 +105,7 @@ for run in range(0,REPEAT_RUNS):
         model_version=MODEL_NAME,
         optimizer="adamw",
         scheduler  ="steplr",
-        lr=0.0001,
+        lr=LEARNING_RATE,
         weight_decay=0,
         step_size=5,
         gamma=0.85,
@@ -116,7 +117,7 @@ for run in range(0,REPEAT_RUNS):
     csv_logger = CSVLogger(PATHS["LOG_PATH"],name=MODEL_ID,version=f"version_{run}_{MODE.name.lower()}")
     trainer = pl.Trainer(
         accelerator=("gpu" if device.type=="cuda" else "cpu"),
-        max_epochs=60,
+        max_epochs=MAX_EPOCHS,
         devices=1,
         logger=([tb_logger,csv_logger] if USE_TENSORBOARD else csv_logger),
         default_root_dir=f"{PATHS['LOG_PATH']}/{MODEL_ID}",
@@ -138,13 +139,18 @@ for run in range(0,REPEAT_RUNS):
         trainer.test(model,dataloaders=datamodule.test_dataloader())
            
     elif MODE==modes.PREDICT:
-        trainer.predict(model,dataloaders=datamodule.predict_dataloader())   
+        predictions = trainer.predict(model,dataloaders=datamodule.predict_dataloader())
 
-    #Save cleaned up logs file to Metrics folder & save graph
-    save_metrics_from_logger(MODEL_ID,PATHS["LOG_PATH"],PATHS['METRICS_PATH'],version=run,mode=MODE.name.lower(),save=True)  
-    if MODE==modes.TRAIN:
-        plot_train_metrics(MODEL_ID,PATHS['METRICS_PATH'],version=run,show=False,save=True)     
+        for batch in predictions: #Save predictions
+            batch = pd.DataFrame(torch.softmax(batch,dim=1))
+            batch.to_csv(f"{save_dir}/{PREDICT_DATASET.name.lower()}_predictions.csv",mode='a', index=False, header=False)
 
+
+    if MODE != modes.PREDICT:
+        #Save cleaned up logs file to Metrics folder & save graph
+        save_metrics_from_logger(MODEL_ID,PATHS["LOG_PATH"],PATHS['METRICS_PATH'],version=run,mode=MODE.name.lower(),save=True)  
+        if MODE==modes.TRAIN:
+            plot_train_metrics(MODEL_ID,PATHS['METRICS_PATH'],version=run,show=False,save=True)
 # %%
 #Dereference all objects, clear cuda cache and run garbage collection
 datamodule=None
