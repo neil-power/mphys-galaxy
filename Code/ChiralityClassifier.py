@@ -10,17 +10,18 @@ from  matplotlib.colors import LinearSegmentedColormap
 
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
-from custom_models.G_ResNet_18 import G_ResNet18
+from custom_models.G_ResNet_18 import G_ResNet18 as G_ResNet18_old
 from custom_models.Jia_ResNet import JiaResnet50
 from custom_models.LeNet import VanillaLeNet
 from custom_models.Steerable_LeNet import CNSteerableLeNet
+from custom_models.G_ResNet import G_ResNet50,G_ResNet18
 
 class ChiralityClassifier(pl.LightningModule):
     """
     Models:
     resnet18 - resnet34 - resnet50 - resnet101 - resnet152
-    jiaresnet50 - LeNet
-    G_ResNet18 - G_LeNet
+    jiaresnet50 - lenet - g_lenet - g_resnet18_old
+    g_resnet18 - g_resnet50
     """
     model_versions = {
         "resnet18": models.resnet18,
@@ -29,9 +30,11 @@ class ChiralityClassifier(pl.LightningModule):
         "resnet101": models.resnet101,
         "resnet152": models.resnet152,
         "jiaresnet50": JiaResnet50,
-        "g_resnet18": G_ResNet18,
+        "g_resnet18_old": G_ResNet18_old,
         "lenet": VanillaLeNet,
-        "g_lenet": CNSteerableLeNet
+        "g_lenet": CNSteerableLeNet,
+        'g_resnet18': G_ResNet18,
+        'g_resnet50': G_ResNet50
     }
     optimizers = {"adamw": optim.AdamW, "sgd": optim.SGD}
     schedulers = {"steplr": optim.lr_scheduler.StepLR}
@@ -125,7 +128,7 @@ class ChiralityClassifier(pl.LightningModule):
          y_preds = torch.argmax(torch.cat(self.test_y_predicted),dim=1)
          cm = confusion_matrix(y_true.cpu(), y_preds.cpu(),normalize = 'true')
 
-         disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['S','Z','None'])
+         disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['CW','ACW','Other'])
          colours = ['#ffffcc','#a1dab4','#41b6c4','#2c7fb8','#253494']
          custom_cmap = LinearSegmentedColormap.from_list('custom_cmap', colours, N=20)
          disp.plot(xticks_rotation=45,cmap = custom_cmap,values_format=".3f",colorbar=False)
