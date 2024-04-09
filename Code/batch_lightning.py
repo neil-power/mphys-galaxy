@@ -40,7 +40,7 @@ PREDICT_DATASET = datasets.FULL_DESI_DATASET #If predicting, predict this datase
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #jiaresnet50,lenet,g_resnet18,g_lenet,
-MODEL_NAME = "resnet18"
+MODEL_NAME = "jiaresnet50"
 CUSTOM_ID = ""
 
 USE_TENSORBOARD = False #Log to tensorboard as well as csv logger
@@ -48,6 +48,7 @@ SAVE_MODEL = False #Save model weights to .pt file
 REPEAT_RUNS = 1 #Set to 1 for 1 run
 IMG_SIZE = 160 #This is the output size of the generated image array
 NUM_WORKERS = 11 #Number of workers in dataloader (usually set to no of CPU cores - 1)
+MAX_IMAGES = 1000000 #Max number of images to load (-1 to for all)
 
 #HYPERPARAMS
 BATCH_SIZE = 100 #Number of images per batch
@@ -85,11 +86,11 @@ device = get_device()
 # %% [markdown]
 # ## Reading in data
 if MODE == modes.PREDICT:
-    datamodule = generate_datamodule(PREDICT_DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS)
+    datamodule = generate_datamodule(PREDICT_DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES)
     datamodule.prepare_data()
     datamodule.setup(stage='predict')
 else:
-    datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS)
+    datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES)
     datamodule.prepare_data()
     datamodule.setup()
 

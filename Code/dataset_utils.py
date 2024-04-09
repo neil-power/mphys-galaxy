@@ -53,15 +53,15 @@ def generate_transforms(resize_after_crop=160):
 
 # ---------------------------------------------------------------------------------
 
-def generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS):
+def generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES=-1):
     if DATASET == datasets.CUT_DATASET:
-        train_val_catalog = pd.read_csv(PATHS["CUT_CATALOG_TRAIN_PATH"])
+        train_val_catalog = pd.read_csv(PATHS["CUT_CATALOG_TRAIN_PATH"])[0:MAX_IMAGES]
         train_val_catalog["file_loc"] = get_file_paths(train_val_catalog,PATHS["FULL_DATA_PATH"])
         generator1 = torch.Generator().manual_seed(42) #Preset test-val split, note test dataloader will still shuffle
         train_catalog, val_catalog = random_split(train_val_catalog, [0.20,0.80], generator=generator1)
         train_catalog = train_catalog.dataset.iloc[train_catalog.indices]
         val_catalog = val_catalog.dataset.iloc[val_catalog.indices]   
-        test_catalog = pd.read_csv(PATHS["CUT_CATALOG_TEST_PATH"])
+        test_catalog = pd.read_csv(PATHS["CUT_CATALOG_TEST_PATH"])[0:MAX_IMAGES]
         test_catalog["file_loc"] = get_file_paths(test_catalog,PATHS["FULL_DATA_PATH"])
 
         datamodule = GalaxyDataModule(
@@ -72,19 +72,19 @@ def generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NU
         )
     else:
         if DATASET == datasets.FULL_DATASET:
-            catalog = pd.read_csv(PATHS["FULL_CATALOG_PATH"])
+            catalog = pd.read_csv(PATHS["FULL_CATALOG_PATH"])[0:MAX_IMAGES]
             catalog["file_loc"] = get_file_paths(catalog,PATHS["FULL_DATA_PATH"])
 
         if DATASET == datasets.FULL_DESI_DATASET:
-            catalog = pd.read_parquet(PATHS["FULL_DESI_CATALOG_PATH"])
+            catalog = pd.read_parquet(PATHS["FULL_DESI_CATALOG_PATH"])[0:MAX_IMAGES]
             catalog["file_loc"] = get_file_paths(catalog,PATHS["FULL_DATA_PATH"])
 
         elif DATASET == datasets.BEST_SUBSET:
-            catalog = pd.read_csv(PATHS["BEST_SUBSET_CATALOG_PATH"])
+            catalog = pd.read_csv(PATHS["BEST_SUBSET_CATALOG_PATH"])[0:MAX_IMAGES]
             catalog["file_loc"] = get_file_paths(catalog,PATHS["FULL_DATA_PATH"])
 
         elif DATASET == datasets.LOCAL_SUBSET:
-            catalog = pd.read_csv(PATHS["LOCAL_SUBSET_CATALOG_PATH"])
+            catalog = pd.read_csv(PATHS["LOCAL_SUBSET_CATALOG_PATH"])[0:MAX_IMAGES]
             catalog["file_loc"] = get_file_paths(catalog,PATHS["LOCAL_SUBSET_DATA_PATH"])
 
         if MODE == modes.PREDICT:
