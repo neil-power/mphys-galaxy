@@ -33,22 +33,23 @@ class modes(Enum):
     PREDICT = 2 #Use an existing saved model on an unlabelled dataset
 
 DATASET = datasets.CUT_DATASET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
-MODE = modes.PREDICT #Select which mode
+MODE = modes.TRAIN #Select which mode
 
 PREDICT_DATASET = datasets.FULL_DESI_DATASET #If predicting, predict this dataset
 
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #jiaresnet50,lenet,g_resnet18,g_lenet,
-MODEL_NAME = "jiaresnet50"
-CUSTOM_ID = ""
+MODEL_NAME = "g_resnet18"
+CUSTOM_ID = "flip_eq"
 
 USE_TENSORBOARD = False #Log to tensorboard as well as csv logger
-SAVE_MODEL = False #Save model weights to .pt file
+SAVE_MODEL = True #Save model weights to .pt file (only valid for train mode)
 REPEAT_RUNS = 1 #Set to 1 for 1 run
 IMG_SIZE = 160 #This is the output size of the generated image array
 NUM_WORKERS = 11 #Number of workers in dataloader (usually set to no of CPU cores - 1)
-MAX_IMAGES = 1000000 #Max number of images to load (-1 to for all)
+MAX_IMAGES = -1 #Max number of images to load (-1 for all)
+FLIP_EQUIVARIANCE = False #Enable flip-equivariance (g_resnet models only)
 
 #HYPERPARAMS
 BATCH_SIZE = 100 #Number of images per batch
@@ -111,7 +112,8 @@ for run in range(0,REPEAT_RUNS):
         step_size=5,
         gamma=0.85,
         weights=(MODEL_PATH if MODE != modes.TRAIN else None),
-        graph_save_path=(f"{save_dir}/val_matrix.png" if MODE == modes.TRAIN else f"{save_dir}/{MODE.name.lower()}_matrix.png")
+        graph_save_path=(f"{save_dir}/val_matrix.png" if MODE == modes.TRAIN else f"{save_dir}/{MODE.name.lower()}_matrix.png"),
+        flip_eq=FLIP_EQUIVARIANCE
     )
 
     tb_logger = TensorBoardLogger(PATHS["LOG_PATH"], name=MODEL_ID,version=f"version_{run}_{MODE.name.lower()}")
