@@ -55,6 +55,7 @@ def generate_transforms(resize_after_crop=160):
 
 def generate_split_from_chirality(num_total,chirality_violation):
     n_z = (1/2)*(chirality_violation*math.sqrt(num_total)+num_total)
+    n_z = round(n_z)
     n_s = num_total-n_z
     return n_z,n_s
 

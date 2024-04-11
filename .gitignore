@@ -5,3 +5,10 @@ Code/lightning_logs
 logs
 lightning_logs
 Data/desi_data_full.csv
+Metrics/g_resnet18_cut_dataset/version_0/model.pt
+Metrics/g_resnet18_cut_dataset_repeat/version_0/model.pt
+Metrics/g_resnet18_cut_dataset_repeat/version_1/model.pt
+Metrics/g_resnet18_cut_dataset_repeat/version_2/model.pt
+Metrics/g_resnet18_cut_dataset_repeat/version_3/model.pt
+Metrics/g_resnet18_cut_dataset_repeat/version_4/model.pt
+Metrics/g_resnet18_cut_dataset/version_0/model2.pt
