@@ -298,9 +298,6 @@ class G_ResNet(torch.nn.Module):
         # the next submodule to build
         self._in_type = r2
 
-        # Number of blocks per layer
-        #n = 2 # WE CAN CHANGE THIS TO GENERALISE YIPEEEE
-
         self.conv1 = conv7x7(r1, r2, stride=2)
         self.layer1 = self.basicLayer(block, nStages[1], layers[0], dropout_rate, stride=1, NOISY=NOISY)
         self.layer2 = self.basicLayer(block, nStages[2], layers[1], dropout_rate, stride=2, NOISY=NOISY)
