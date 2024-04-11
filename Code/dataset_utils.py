@@ -3,6 +3,7 @@
 import os
 import math
 import pandas as pd
+import numpy as np
 import torch
 from torch.utils.data import random_split
 import albumentations as A
@@ -61,8 +62,8 @@ def generate_split_from_chirality(num_total,chirality_violation):
 
 # ---------------------------------------------------------------------------------
 
-def generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES=-1):
-    if DATASET == datasets.CUT_DATASET:
+def generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES=-1,SET_CHIRALITY=0):
+    if DATASET == datasets.CUT_DATASET or DATASET == datasets.SET_CHIRALITY_DATASET:
         train_val_catalog = pd.read_csv(PATHS["CUT_CATALOG_TRAIN_PATH"])[0:MAX_IMAGES]
         train_val_catalog["file_loc"] = get_file_paths(train_val_catalog,PATHS["FULL_DATA_PATH"])
         generator1 = torch.Generator().manual_seed(42) #Preset test-val split, note test dataloader will still shuffle
@@ -71,6 +72,14 @@ def generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NU
         val_catalog = val_catalog.dataset.iloc[val_catalog.indices]   
         test_catalog = pd.read_csv(PATHS["CUT_CATALOG_TEST_PATH"])[0:MAX_IMAGES]
         test_catalog["file_loc"] = get_file_paths(test_catalog,PATHS["FULL_DATA_PATH"])
+
+        if DATASET == datasets.SET_CHIRALITY_DATASET:
+            s_galaxies = test_catalog[test_catalog["P_CW"]>0.5]
+            z_galaxies = test_catalog[test_catalog["P_ACW"]>0.5]
+            n_total = round((s_galaxies.shape[0] + z_galaxies.shape[0])*0.7) #NOTE TOTAL AS 70% OF TOTAL ONLY WORKS UP TO T=12
+            n_z,n_s = generate_split_from_chirality(n_total,SET_CHIRALITY)
+            print(f"Test data generated with {n_z} ACW and {n_s} CW with CV of {SET_CHIRALITY}")
+            test_catalog = pd.concat([s_galaxies[0:n_s],z_galaxies[0:n_z]])
 
         datamodule = GalaxyDataModule(
             label_cols=["P_CW","P_ACW","P_OTHER"],

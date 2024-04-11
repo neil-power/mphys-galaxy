@@ -26,6 +26,7 @@ class datasets(Enum):
     BEST_SUBSET = 2 #Select N best S,Z & other galaxies, evenly split
     LOCAL_SUBSET = 3 #Use local cache of 1500 galaxies
     FULL_DESI_DATASET = 4 #Use all 7 million galaxies in DESI catalog, minus those that appear in cut catalog (predict only)
+    SET_CHIRALITY_DATASET = 5 #Use galaxies from the CUT_DATASET's training dataset with only S and Z galaxies at a set chirality violation (test/predict only)
 
 class modes(Enum):
     TRAIN = 0 #Train on a dataset
@@ -33,23 +34,24 @@ class modes(Enum):
     PREDICT = 2 #Use an existing saved model on an unlabelled dataset
 
 DATASET = datasets.CUT_DATASET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
-MODE = modes.TRAIN #Select which mode
+MODE = modes.TEST #Select which mode
 
-PREDICT_DATASET = datasets.FULL_DESI_DATASET #If predicting, predict this dataset
+PREDICT_DATASET = datasets.SET_CHIRALITY_DATASET #If predicting, predict this dataset
 
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #jiaresnet50,lenet,g_resnet18,g_lenet,
-MODEL_NAME = "g_resnet18"
-CUSTOM_ID = "flip_eq"
+MODEL_NAME = "resnet18"
+CUSTOM_ID = ""
 
 USE_TENSORBOARD = False #Log to tensorboard as well as csv logger
-SAVE_MODEL = True #Save model weights to .pt file (only valid for train mode)
+SAVE_MODEL = False #Save model weights to .pt file
 REPEAT_RUNS = 1 #Set to 1 for 1 run
 IMG_SIZE = 160 #This is the output size of the generated image array
 NUM_WORKERS = 11 #Number of workers in dataloader (usually set to no of CPU cores - 1)
 MAX_IMAGES = -1 #Max number of images to load (-1 for all)
 FLIP_EQUIVARIANCE = False #Enable flip-equivariance (g_resnet models only)
+SET_CHIRALITY = 0 #Only used if SET_CHIRALITY_DATASET is selected
 
 #HYPERPARAMS
 BATCH_SIZE = 100 #Number of images per batch
@@ -87,11 +89,11 @@ device = get_device()
 # %% [markdown]
 # ## Reading in data
 if MODE == modes.PREDICT:
-    datamodule = generate_datamodule(PREDICT_DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES)
+    datamodule = generate_datamodule(PREDICT_DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES,SET_CHIRALITY)
     datamodule.prepare_data()
     datamodule.setup(stage='predict')
 else:
-    datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES)
+    datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES,SET_CHIRALITY)
     datamodule.prepare_data()
     datamodule.setup()
 
@@ -139,17 +141,28 @@ for run in range(0,REPEAT_RUNS):
             torch.save(trainer.model.state_dict(), MODEL_PATH)
         
     elif MODE==modes.TEST:
-        trainer.test(model,dataloaders=datamodule.test_dataloader())
+        test_predictions = trainer.test(model,dataloaders=datamodule.test_dataloader())
+        if DATASET == datasets.SET_CHIRALITY_DATASET:
+            test_predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_{SET_CHIRALITY}_test_predictions.csv"
+        else:
+            test_predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_test_predictions.csv"
+        if os.path.exists(test_predict_save_path):
+            os.remove(test_predict_save_path)
+        for batch in test_predictions: #Save predictions
+            batch = pd.DataFrame(torch.softmax(batch,dim=1))
+            batch.to_csv(test_predict_save_path,mode='a', index=False, header=False)
            
     elif MODE==modes.PREDICT:
         predictions = trainer.predict(model,dataloaders=datamodule.predict_dataloader())
-
+        predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_predictions.csv"
+        if os.path.exists(predict_save_path):
+            os.remove(predict_save_path)
         for batch in predictions: #Save predictions
             batch = pd.DataFrame(torch.softmax(batch,dim=1))
-            batch.to_csv(f"{save_dir}/{PREDICT_DATASET.name.lower()}_predictions.csv",mode='a', index=False, header=False)
+            batch.to_csv(predict_save_path,mode='a', index=False, header=False)
 
 
-    if MODE != modes.PREDICT:
+    if MODE != modes.PREDICT and DATASET != datasets.SET_CHIRALITY_DATASET:
         #Save cleaned up logs file to Metrics folder & save graph
         save_metrics_from_logger(MODEL_ID,PATHS["LOG_PATH"],PATHS['METRICS_PATH'],version=run,mode=MODE.name.lower(),save=True)  
         if MODE==modes.TRAIN:

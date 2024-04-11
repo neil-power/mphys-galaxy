@@ -161,4 +161,4 @@ class ChiralityClassifier(pl.LightningModule):
         # CW,ACW, OTHER
         n_z = torch.count_nonzero(labels[:,0]>0.5)
         n_s = torch.count_nonzero(labels[:,1]>0.5)
-        return (n_z-n_s)/torch.sqrt(n_z+n_s)
+        return (n_s-n_z)/torch.sqrt(n_z+n_s)
