@@ -206,7 +206,7 @@ class Bottleneck(enn.EquivariantModule): #MIGHT WORK?
 
 class G_ResNet(torch.nn.Module):
     def __init__(self,
-                 block,
+                 block: BasicBlock,
                  layers,
                  dropout_rate: float=0, 
                  num_classes:int =3,
