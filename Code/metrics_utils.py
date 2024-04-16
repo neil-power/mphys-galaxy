@@ -151,11 +151,10 @@ def get_predict_results_runs(model_ids,max_runs,METRICS_PATH,dataset_name="full_
         for run in range(max_runs):
             try:
                 predictions = pd.read_csv(f"{METRICS_PATH}/{model}/version_{run}/{dataset_name}_predictions.csv",header=None,names=['CW','ACW','Other'], on_bad_lines = 'skip').astype('float')
-                argmax_predictions = predictions.idxmax(axis=1)
-                num_acw = argmax_predictions[argmax_predictions=='ACW'].shape[0]
-                num_cw = argmax_predictions[argmax_predictions=='CW'].shape[0]
-                num_other = argmax_predictions[argmax_predictions=='Other'].shape[0]
-                #num = argmax_predictions.shape[0]
+                num = predictions.shape[0]
+                num_cw = np.count_nonzero(predictions['CW']>0.5)
+                num_acw = np.count_nonzero(predictions['ACW']>0.5)
+                num_other = num - num_acw - num_acw
                 acws.append(num_acw)
                 cws.append(num_cw)
                 others.append(num_other)
