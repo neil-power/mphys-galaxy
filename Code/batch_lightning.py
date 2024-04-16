@@ -41,7 +41,7 @@ SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_D
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #jiaresnet50,lenet,g_resnet18,g_lenet,g_resnet18_old
-MODEL_NAME = "resnet18"
+MODEL_NAME = "g_resnet18_old"
 CUSTOM_ID = "repeat"
 
 USE_TENSORBOARD = False #Log to tensorboard as well as csv logger
@@ -85,8 +85,7 @@ if MODE != modes.TRAIN:
 # %% 
 device = get_device()
 
-for SET_CHIRALITY in [-3,-6,-9,-12]:
-
+for SET_CHIRALITY in [-12,-9,-6,-3]:
     # %% [markdown]
     # ## Reading in data
     if MODE == modes.PREDICT:
