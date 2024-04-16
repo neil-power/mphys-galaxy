@@ -36,12 +36,12 @@ DATASET = datasets.CUT_DATASET #Select which dataset to train on, or if testing/
 MODE = modes.PREDICT #Select which mode
 
 PREDICT_DATASET = datasets.CUT_DATASET #If predicting, predict this dataset
-SET_CHIRALITY = 0 #Set to None unless you want to use galaxies from the CUT_DATASET's test dataset with only S and Z galaxies at a set chirality violation (predict only)
+SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_DATASET's test dataset with only S and Z galaxies at a set chirality violation (predict only)
 
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
-#jiaresnet50,lenet,g_resnet18,g_lenet,
-MODEL_NAME = "resnet50"
+#jiaresnet50,lenet,g_resnet18,g_lenet,g_resnet18_old
+MODEL_NAME = "resnet18"
 CUSTOM_ID = "repeat"
 
 USE_TENSORBOARD = False #Log to tensorboard as well as csv logger
@@ -51,7 +51,6 @@ IMG_SIZE = 160 #This is the output size of the generated image array
 NUM_WORKERS = 11 #Number of workers in dataloader (usually set to no of CPU cores - 1)
 MAX_IMAGES = -1 #Max number of images to load (-1 for all)
 FLIP_EQUIVARIANCE = False #Enable flip-equivariance (g_resnet models only)
-
 
 #HYPERPARAMS
 BATCH_SIZE = 100 #Number of images per batch
@@ -86,7 +85,7 @@ if MODE != modes.TRAIN:
 # %% 
 device = get_device()
 
-for SET_CHIRALITY in [0,3,6,9,12]:
+for SET_CHIRALITY in [-3,-6,-9,-12]:
 
     # %% [markdown]
     # ## Reading in data
@@ -95,7 +94,7 @@ for SET_CHIRALITY in [0,3,6,9,12]:
         datamodule.prepare_data()
         datamodule.setup(stage='predict')
     else:
-        datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES,SET_CHIRALITY)
+        datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES)
         datamodule.prepare_data()
         datamodule.setup()
 
@@ -143,13 +142,7 @@ for SET_CHIRALITY in [0,3,6,9,12]:
                 torch.save(trainer.model.state_dict(), MODEL_PATH)
             
         elif MODE==modes.TEST:
-            test_predictions = trainer.test(model,dataloaders=datamodule.test_dataloader())
-            test_predict_save_path = f"{save_dir}/{DATASET.name.lower()}_test_predictions.csv"
-            if os.path.exists(test_predict_save_path):
-                os.remove(test_predict_save_path)
-            for batch in test_predictions: #Save predictions
-                batch = pd.DataFrame(torch.softmax(batch,dim=1))
-                batch.to_csv(test_predict_save_path,mode='a', index=False, header=False)
+            trainer.test(model,dataloaders=datamodule.test_dataloader())
             
         elif MODE==modes.PREDICT:
             predictions = trainer.predict(model,dataloaders=datamodule.predict_dataloader())
@@ -164,7 +157,7 @@ for SET_CHIRALITY in [0,3,6,9,12]:
                 batch.to_csv(predict_save_path,mode='a', index=False, header=False)
 
 
-        if MODE != modes.PREDICT and DATASET != datasets.SET_CHIRALITY_DATASET:
+        if MODE != modes.PREDICT and SET_CHIRALITY is None:
             #Save cleaned up logs file to Metrics folder & save graph
             save_metrics_from_logger(MODEL_ID,PATHS["LOG_PATH"],PATHS['METRICS_PATH'],version=run,mode=MODE.name.lower(),save=True)  
             if MODE==modes.TRAIN:

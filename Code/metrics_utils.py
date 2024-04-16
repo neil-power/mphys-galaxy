@@ -96,3 +96,87 @@ def save_metrics_from_tensorboard_paths(input_path,output_path):
     metrics.to_csv(output_path)
 
 # ---------------------------------------------------------------------------------
+    
+def get_results_runs(model_ids,mode,METRICS_PATH,max_runs=5):
+    repeat_metrics = pd.DataFrame(columns=["Loss","Accuracy","ECE","C Viol"],index=model_ids)
+    repeat_metrics.columns.name="Model"
+    for model in model_ids:
+        best_losses = []
+        best_accs = []
+        best_eces = []
+        best_chiralities = []
+        for run in range(max_runs):
+            try:
+                if mode =='val':
+                    metrics = get_metrics_from_csv(model,METRICS_PATH,version=run,mode='train')
+                    best_loss_epoch = metrics['val_loss'].argmin()
+                    best_losses.append(metrics['val_loss'][best_loss_epoch])
+                    best_accs.append(metrics['val_acc'][best_loss_epoch])
+                    best_eces.append(metrics['val_calibration_error'][best_loss_epoch])
+                    best_chiralities.append((metrics[f'{mode}_chirality_violation'][best_loss_epoch]))
+                elif mode =='test':
+                    metrics = get_metrics_from_csv(model,METRICS_PATH,version=run,mode=mode)
+                    best_losses.append(metrics['test_loss'])
+                    best_accs.append(metrics['test_acc'])
+                    best_eces.append(metrics['test_calibration_error'])
+                    best_chiralities.append((metrics['test_chirality_violation']))
+            except:
+                print(f"Error with {model}, run {run}")
+
+        nans_removed = np.count_nonzero(np.isnan(np.concatenate((best_losses, best_accs, best_eces, best_chiralities))))
+        if nans_removed > 0:
+            print(f"{model}: Removed {nans_removed} NaNs")
+        best_losses = np.array(best_losses)[~np.isnan(best_losses)]
+        best_accs = np.array(best_accs)[~np.isnan(best_accs)]
+        best_eces = np.array(best_eces)[~np.isnan(best_eces)]
+        best_chiralities = np.array(best_chiralities)[~np.isnan(best_chiralities)]
+
+        repeat_metrics.loc[model] = {"Loss": f"{np.average(best_losses):.4f} ± {np.std(best_losses):.4f}",
+                                        "Accuracy": f"{np.average(best_accs):.2%} ± {np.std(best_accs):.2%}",
+                                        "ECE": f"{np.average(best_eces):.4f} ± {np.std(best_eces):.4f}",
+                                        "C Viol": f"{np.average(best_chiralities):.4f} ± {np.std(best_chiralities):.4f}"}
+    #print(tabulate(repeat_metrics,headers='keys',tablefmt='github'))
+    return repeat_metrics
+
+# ---------------------------------------------------------------------------------
+
+def get_predict_results_runs(model_ids,max_runs,METRICS_PATH,dataset_name="full_desi_dataset"):
+    repeat_metrics = pd.DataFrame(columns=["ACW","CW","Other","C Viol"],index=model_ids)
+    repeat_metrics.columns.name="Model"
+    for model in model_ids:
+        acws = []
+        cws = []
+        others = []
+        c_viols = []
+        for run in range(max_runs):
+            try:
+                predictions = pd.read_csv(f"{METRICS_PATH}/{model}/version_{run}/{dataset_name}_predictions.csv",header=None,names=['CW','ACW','Other'], on_bad_lines = 'skip').astype('float')
+                argmax_predictions = predictions.idxmax(axis=1)
+                num_acw = argmax_predictions[argmax_predictions=='ACW'].shape[0]
+                num_cw = argmax_predictions[argmax_predictions=='CW'].shape[0]
+                num_other = argmax_predictions[argmax_predictions=='Other'].shape[0]
+                #num = argmax_predictions.shape[0]
+                acws.append(num_acw)
+                cws.append(num_cw)
+                others.append(num_other)
+                c_viols.append(chirality_violation(predictions))
+            except:
+                print(f"Error with {model}, run {run}")
+        
+        
+        repeat_metrics.loc[model] = {"ACW": f"{np.average(acws):.0f} ({np.average(acws)/1e6:.1%}) ± {np.std(acws):.0f}",
+                                        "CW": f"{np.average(cws):.0f} ({np.average(cws)/1e6:.1%}) ± {np.std(cws):.0f}",
+                                        "Other": f"{np.average(others):.0f} ({np.average(others)/1e6:.1%}) ± {np.std(others):.0f}",
+                                        "C Viol": f"{np.average(c_viols):3.2f} ± {np.std(c_viols):3.2f}"}
+    #print(tabulate(repeat_metrics,headers='keys',tablefmt='github'))
+    return repeat_metrics
+
+# ---------------------------------------------------------------------------------
+
+def chirality_violation(labels):
+    # CW,ACW, OTHER
+    n_z = np.count_nonzero(labels['CW']>0.5)
+    n_s = np.count_nonzero(labels['ACW']>0.5)
+    return (n_s-n_z)/np.sqrt(n_z+n_s)
+
+# ---------------------------------------------------------------------------------
