@@ -26,7 +26,6 @@ class datasets(Enum):
     BEST_SUBSET = 2 #Select N best S,Z & other galaxies, evenly split
     LOCAL_SUBSET = 3 #Use local cache of 1500 galaxies
     FULL_DESI_DATASET = 4 #Use all 7 million galaxies in DESI catalog, minus those that appear in cut catalog (predict only)
-    SET_CHIRALITY_DATASET = 5 #Use galaxies from the CUT_DATASET's training dataset with only S and Z galaxies at a set chirality violation (test/predict only)
 
 class modes(Enum):
     TRAIN = 0 #Train on a dataset
@@ -34,24 +33,25 @@ class modes(Enum):
     PREDICT = 2 #Use an existing saved model on an unlabelled dataset
 
 DATASET = datasets.CUT_DATASET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
-MODE = modes.TEST #Select which mode
+MODE = modes.PREDICT #Select which mode
 
-PREDICT_DATASET = datasets.SET_CHIRALITY_DATASET #If predicting, predict this dataset
+PREDICT_DATASET = datasets.CUT_DATASET #If predicting, predict this dataset
+SET_CHIRALITY = 0 #Set to None unless you want to use galaxies from the CUT_DATASET's test dataset with only S and Z galaxies at a set chirality violation (predict only)
 
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #jiaresnet50,lenet,g_resnet18,g_lenet,
-MODEL_NAME = "resnet18"
-CUSTOM_ID = ""
+MODEL_NAME = "resnet50"
+CUSTOM_ID = "repeat"
 
 USE_TENSORBOARD = False #Log to tensorboard as well as csv logger
 SAVE_MODEL = False #Save model weights to .pt file
-REPEAT_RUNS = 1 #Set to 1 for 1 run
+REPEAT_RUNS = 5 #Set to 1 for 1 run
 IMG_SIZE = 160 #This is the output size of the generated image array
 NUM_WORKERS = 11 #Number of workers in dataloader (usually set to no of CPU cores - 1)
 MAX_IMAGES = -1 #Max number of images to load (-1 for all)
 FLIP_EQUIVARIANCE = False #Enable flip-equivariance (g_resnet models only)
-SET_CHIRALITY = 0 #Only used if SET_CHIRALITY_DATASET is selected
+
 
 #HYPERPARAMS
 BATCH_SIZE = 100 #Number of images per batch
@@ -86,87 +86,89 @@ if MODE != modes.TRAIN:
 # %% 
 device = get_device()
 
-# %% [markdown]
-# ## Reading in data
-if MODE == modes.PREDICT:
-    datamodule = generate_datamodule(PREDICT_DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES,SET_CHIRALITY)
-    datamodule.prepare_data()
-    datamodule.setup(stage='predict')
-else:
-    datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES,SET_CHIRALITY)
-    datamodule.prepare_data()
-    datamodule.setup()
+for SET_CHIRALITY in [0,3,6,9,12]:
 
-# %%
-for run in range(0,REPEAT_RUNS):
-    
-    save_dir = f"{PATHS['METRICS_PATH']}/{MODEL_ID}/version_{run}"
-    MODEL_PATH = f"{save_dir}/model.pt"
-    create_folder(save_dir)
+    # %% [markdown]
+    # ## Reading in data
+    if MODE == modes.PREDICT:
+        datamodule = generate_datamodule(PREDICT_DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES,SET_CHIRALITY)
+        datamodule.prepare_data()
+        datamodule.setup(stage='predict')
+    else:
+        datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES,SET_CHIRALITY)
+        datamodule.prepare_data()
+        datamodule.setup()
 
-    model = ChiralityClassifier(
-        num_classes=(2 if (MODEL_NAME=="jiaresnet50") else 3), #2 for Jia et al version
-        model_version=MODEL_NAME,
-        optimizer="adamw",
-        scheduler  ="steplr",
-        lr=LEARNING_RATE,
-        weight_decay=0,
-        step_size=5,
-        gamma=0.85,
-        weights=(MODEL_PATH if MODE != modes.TRAIN else None),
-        graph_save_path=(f"{save_dir}/val_matrix.png" if MODE == modes.TRAIN else f"{save_dir}/{MODE.name.lower()}_matrix.png"),
-        flip_eq=FLIP_EQUIVARIANCE
-    )
-
-    tb_logger = TensorBoardLogger(PATHS["LOG_PATH"], name=MODEL_ID,version=f"version_{run}_{MODE.name.lower()}")
-    csv_logger = CSVLogger(PATHS["LOG_PATH"],name=MODEL_ID,version=f"version_{run}_{MODE.name.lower()}")
-    trainer = pl.Trainer(
-        accelerator=("gpu" if device.type=="cuda" else "cpu"),
-        max_epochs=MAX_EPOCHS,
-        devices=1,
-        logger=([tb_logger,csv_logger] if USE_TENSORBOARD else csv_logger),
-        default_root_dir=f"{PATHS['LOG_PATH']}/{MODEL_ID}",
-        enable_checkpointing=False,
-        #profiler="pytorch"
-        #callbacks=EarlyStopping(monitor="val_loss", mode="min")
-    )
-
-    #compiled_model = torch.compile(model, backend="eager")
-    
-    if MODE==modes.TRAIN:
-        trainer.fit(model,train_dataloaders=datamodule.train_dataloader(),val_dataloaders=datamodule.val_dataloader())
-        trainer.test(model,dataloaders=datamodule.val_dataloader())
-
-        if SAVE_MODEL:
-            torch.save(trainer.model.state_dict(), MODEL_PATH)
+    # %%
+    for run in range(0,REPEAT_RUNS):
         
-    elif MODE==modes.TEST:
-        test_predictions = trainer.test(model,dataloaders=datamodule.test_dataloader())
-        if DATASET == datasets.SET_CHIRALITY_DATASET:
-            test_predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_{SET_CHIRALITY}_test_predictions.csv"
-        else:
-            test_predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_test_predictions.csv"
-        if os.path.exists(test_predict_save_path):
-            os.remove(test_predict_save_path)
-        for batch in test_predictions: #Save predictions
-            batch = pd.DataFrame(torch.softmax(batch,dim=1))
-            batch.to_csv(test_predict_save_path,mode='a', index=False, header=False)
-           
-    elif MODE==modes.PREDICT:
-        predictions = trainer.predict(model,dataloaders=datamodule.predict_dataloader())
-        predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_predictions.csv"
-        if os.path.exists(predict_save_path):
-            os.remove(predict_save_path)
-        for batch in predictions: #Save predictions
-            batch = pd.DataFrame(torch.softmax(batch,dim=1))
-            batch.to_csv(predict_save_path,mode='a', index=False, header=False)
+        save_dir = f"{PATHS['METRICS_PATH']}/{MODEL_ID}/version_{run}"
+        MODEL_PATH = f"{save_dir}/model.pt"
+        create_folder(save_dir)
 
+        model = ChiralityClassifier(
+            num_classes=(2 if (MODEL_NAME=="jiaresnet50") else 3), #2 for Jia et al version
+            model_version=MODEL_NAME,
+            optimizer="adamw",
+            scheduler  ="steplr",
+            lr=LEARNING_RATE,
+            weight_decay=0,
+            step_size=5,
+            gamma=0.85,
+            weights=(MODEL_PATH if MODE != modes.TRAIN else None),
+            graph_save_path=(f"{save_dir}/val_matrix.png" if MODE == modes.TRAIN else f"{save_dir}/{MODE.name.lower()}_matrix.png"),
+            flip_eq=FLIP_EQUIVARIANCE
+        )
 
-    if MODE != modes.PREDICT and DATASET != datasets.SET_CHIRALITY_DATASET:
-        #Save cleaned up logs file to Metrics folder & save graph
-        save_metrics_from_logger(MODEL_ID,PATHS["LOG_PATH"],PATHS['METRICS_PATH'],version=run,mode=MODE.name.lower(),save=True)  
+        tb_logger = TensorBoardLogger(PATHS["LOG_PATH"], name=MODEL_ID,version=f"version_{run}_{MODE.name.lower()}")
+        csv_logger = CSVLogger(PATHS["LOG_PATH"],name=MODEL_ID,version=f"version_{run}_{MODE.name.lower()}")
+        trainer = pl.Trainer(
+            accelerator=("gpu" if device.type=="cuda" else "cpu"),
+            max_epochs=MAX_EPOCHS,
+            devices=1,
+            logger=([tb_logger,csv_logger] if USE_TENSORBOARD else csv_logger),
+            default_root_dir=f"{PATHS['LOG_PATH']}/{MODEL_ID}",
+            enable_checkpointing=False,
+            #profiler="pytorch"
+            #callbacks=EarlyStopping(monitor="val_loss", mode="min")
+        )
+
+        #compiled_model = torch.compile(model, backend="eager")
+        
         if MODE==modes.TRAIN:
-            plot_train_metrics(MODEL_ID,PATHS['METRICS_PATH'],version=run,show=False,save=True)
+            trainer.fit(model,train_dataloaders=datamodule.train_dataloader(),val_dataloaders=datamodule.val_dataloader())
+            trainer.test(model,dataloaders=datamodule.val_dataloader())
+
+            if SAVE_MODEL:
+                torch.save(trainer.model.state_dict(), MODEL_PATH)
+            
+        elif MODE==modes.TEST:
+            test_predictions = trainer.test(model,dataloaders=datamodule.test_dataloader())
+            test_predict_save_path = f"{save_dir}/{DATASET.name.lower()}_test_predictions.csv"
+            if os.path.exists(test_predict_save_path):
+                os.remove(test_predict_save_path)
+            for batch in test_predictions: #Save predictions
+                batch = pd.DataFrame(torch.softmax(batch,dim=1))
+                batch.to_csv(test_predict_save_path,mode='a', index=False, header=False)
+            
+        elif MODE==modes.PREDICT:
+            predictions = trainer.predict(model,dataloaders=datamodule.predict_dataloader())
+            if SET_CHIRALITY is not None:
+                predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_CVIOL_{SET_CHIRALITY}_predictions.csv"
+            else:
+                predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_predictions.csv"
+            if os.path.exists(predict_save_path):
+                os.remove(predict_save_path)
+            for batch in predictions: #Save predictions
+                batch = pd.DataFrame(torch.softmax(batch,dim=1))
+                batch.to_csv(predict_save_path,mode='a', index=False, header=False)
+
+
+        if MODE != modes.PREDICT and DATASET != datasets.SET_CHIRALITY_DATASET:
+            #Save cleaned up logs file to Metrics folder & save graph
+            save_metrics_from_logger(MODEL_ID,PATHS["LOG_PATH"],PATHS['METRICS_PATH'],version=run,mode=MODE.name.lower(),save=True)  
+            if MODE==modes.TRAIN:
+                plot_train_metrics(MODEL_ID,PATHS['METRICS_PATH'],version=run,show=False,save=True)
 # %%
 #Dereference all objects, clear cuda cache and run garbage collection
 datamodule=None
