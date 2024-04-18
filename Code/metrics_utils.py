@@ -179,3 +179,11 @@ def chirality_violation(labels):
     return (n_s-n_z)/np.sqrt(n_z+n_s)
 
 # ---------------------------------------------------------------------------------
+
+def count_spirals(labels):
+    # CW,ACW, OTHER
+    n_z = np.count_nonzero(labels['CW']>0.5)
+    n_s = np.count_nonzero(labels['ACW']>0.5)
+    return n_z+n_s
+
+# ---------------------------------------------------------------------------------
