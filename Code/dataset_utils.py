@@ -49,6 +49,8 @@ def generate_transforms(resize_after_crop=160):
             interpolation=1,
             always_apply=True
         ),
+
+        #rotate
     ]
     return A.Compose(transforms_to_apply)
 
