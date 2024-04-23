@@ -53,6 +53,7 @@ class ChiralityClassifier(pl.LightningModule):
         weights=None,
         graph_save_path='',
         flip_eq = False, #Flip equivariance for g_resnet models
+        custom_predict = False, 
     ):
         super().__init__()
 
@@ -65,8 +66,11 @@ class ChiralityClassifier(pl.LightningModule):
         self.optimizer = self.optimizers[optimizer]
         self.scheduler = self.schedulers[scheduler]
         self.loss_fn = nn.CrossEntropyLoss()
-        if model_version == "g_resnet18" or model_version == "g_resnet18_old":
-            self.model = self.model_versions[model_version](num_classes=num_classes,f=flip_eq)
+        self.custom_predict = custom_predict
+        if model_version == "g_resnet18":
+                self.model = self.model_versions[model_version](num_classes=num_classes,f=flip_eq,custom_predict=custom_predict)
+        elif model_version == "g_resnet18_old":
+                self.model = self.model_versions[model_version](num_classes=num_classes,f=flip_eq)
         else:
             self.model = self.model_versions[model_version](num_classes=num_classes)
         if weights is not None:
@@ -75,6 +79,7 @@ class ChiralityClassifier(pl.LightningModule):
         self.test_y_predicted = []
         self.test_y_true = []
         self.graph_save_path = graph_save_path
+        
 
     def forward(self, X):
         return self.model(X)

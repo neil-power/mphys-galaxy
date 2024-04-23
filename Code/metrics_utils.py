@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tensorboard_reducer.event_loader import EventAccumulator
 from dataset_utils import create_folder
+from tabulate import tabulate
 
 
 # ---------------------------------------------------------------------------------
@@ -167,7 +168,7 @@ def get_predict_results_runs(model_ids,max_runs,METRICS_PATH,dataset_name="full_
                                         "CW": f"{np.average(cws):.0f} ({np.average(cws)/1e6:.1%}) ± {np.std(cws):.0f}",
                                         "Other": f"{np.average(others):.0f} ({np.average(others)/1e6:.1%}) ± {np.std(others):.0f}",
                                         "C Viol": f"{np.average(c_viols):3.2f} ± {np.std(c_viols):3.2f}"}
-    #print(tabulate(repeat_metrics,headers='keys',tablefmt='github'))
+    #print(tabulate(repeat_metrics,headers='keys',tablefmt='latex'))
     return repeat_metrics
 
 # ---------------------------------------------------------------------------------

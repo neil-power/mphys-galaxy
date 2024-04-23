@@ -218,6 +218,7 @@ class G_ResNet(torch.nn.Module):
                  fixparams: bool = True,
                  initial_stride: int = 1,
                  NOISY: bool = False,
+                 custom_predict: bool = False, #Use Jia et al predict function
                  ):
         r"""
         
@@ -248,6 +249,10 @@ class G_ResNet(torch.nn.Module):
         
         """
         super(G_ResNet, self).__init__()
+
+        self.custom_predict = custom_predict
+        if custom_predict:
+            num_classes = 2
 
         nStages = [64, 64, 128, 256, 512]
         #nStages = [16,16,32,64,128]
@@ -404,6 +409,20 @@ class G_ResNet(torch.nn.Module):
         if in_train_mode: #If model was previously in train mode, return to train mode
             self.train()
         return state_dictionary
+
+
+    def predict(self, x): #Override predict
+        if self.custom_predict:
+            x_i = torch.flip(x, (-1,))
+            a = super().__call__(x)
+            a_i = super().__call__(x_i)
+            return torch.cat((a[..., 0:1], a_i[..., 0:1], 0.5 * (a[..., 1:2] + a_i[..., 1:2])), dim=-1)
+        else:
+            a = super().__call__(x)
+            return a
+
+    def __call__(self, *args, **kwargs):
+         return self.predict(*args, **kwargs)
     
 def _resnet(
     block,
