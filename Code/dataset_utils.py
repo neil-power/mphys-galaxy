@@ -39,19 +39,20 @@ def split_dataframe(data, no_of_batches):
     return batched_df
 # ---------------------------------------------------------------------------------
 
-def generate_transforms(resize_after_crop=160):
-    transforms_to_apply = [
-        A.ToFloat(), #Converts from 0-255 to 0-1
+def generate_transforms(resize_after_crop=160,random_rotate=True):
+    transforms_to_apply = [] 
 
-        A.Resize( #Resizes to 160x160
-            height=resize_after_crop,
-            width=resize_after_crop,
-            interpolation=1,
-            always_apply=True
-        ),
-        #Randomly rotates image by 0-360 degrees
-        A.Rotate(limit=(0,360),always_apply=True)
-    ]
+    transforms_to_apply.append(A.ToFloat()) #Converts from 0-255 to 0-1
+    
+    if random_rotate: #Random rotation between 0 and 360 degrees
+        transforms_to_apply.append(A.Rotate(limit=(0,360),always_apply=True))
+
+    transforms_to_apply.append(A.Resize( #Resizes to 160x160
+                height=resize_after_crop,
+                width=resize_after_crop,
+                interpolation=1,
+                always_apply=True
+            ))
     return A.Compose(transforms_to_apply)
 
 # ---------------------------------------------------------------------------------
@@ -98,7 +99,7 @@ def generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NU
             catalog = pd.read_csv(PATHS["LOCAL_SUBSET_CATALOG_PATH"])[0:MAX_IMAGES]
             catalog["file_loc"] = get_file_paths(catalog,PATHS["LOCAL_SUBSET_DATA_PATH"])
         
-        elif DATASET == datasets.CUT_DATASET: #PREDICT ONLY
+        elif DATASET == datasets.CUT_TEST_DATASET: #PREDICT ONLY
             catalog = pd.read_csv(PATHS["CUT_CATALOG_TEST_PATH"])[0:MAX_IMAGES]
             if SET_CHIRALITY is not None:
                 s_galaxies = catalog[catalog["P_CW"]>0.5]

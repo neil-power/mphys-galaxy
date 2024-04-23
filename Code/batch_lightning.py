@@ -26,6 +26,7 @@ class datasets(Enum):
     BEST_SUBSET = 2 #Select N best S,Z & other galaxies, evenly split
     LOCAL_SUBSET = 3 #Use local cache of 1500 galaxies
     FULL_DESI_DATASET = 4 #Use all 7 million galaxies in DESI catalog, minus those that appear in cut catalog (predict only)
+    CUT_TEST_DATASET = 5 #The testing dataset from the CUT_DATASET (predict only)
 
 class modes(Enum):
     TRAIN = 0 #Train on a dataset
@@ -41,7 +42,7 @@ SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_D
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #jiaresnet50,lenet,g_resnet18,g_lenet,g_resnet18_old
-MODEL_NAME = "resnet18"
+MODEL_NAME = "g_lenet"
 CUSTOM_ID = "r_repeat"
 
 USE_TENSORBOARD = True #Log to tensorboard as well as csv logger
