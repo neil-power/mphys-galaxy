@@ -49,8 +49,8 @@ def generate_transforms(resize_after_crop=160):
             interpolation=1,
             always_apply=True
         ),
-
-        #rotate
+        #Randomly rotates image by 0-360 degrees
+        A.Rotate(limit=(0,360),always_apply=True)
     ]
     return A.Compose(transforms_to_apply)
 

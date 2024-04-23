@@ -33,7 +33,7 @@ class modes(Enum):
     PREDICT = 2 #Use an existing saved model on an unlabelled dataset
 
 DATASET = datasets.CUT_DATASET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
-MODE = modes.TEST #Select which mode
+MODE = modes.TRAIN #Select which mode
 
 PREDICT_DATASET = datasets.CUT_DATASET #If predicting, predict this dataset
 SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_DATASET's test dataset with only S and Z galaxies at a set chirality violation (predict only)
@@ -41,16 +41,16 @@ SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_D
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #jiaresnet50,lenet,g_resnet18,g_lenet,g_resnet18_old
-MODEL_NAME = "g_resnet18"
-CUSTOM_ID = "flip_eq"
+MODEL_NAME = "resnet18"
+CUSTOM_ID = "r_repeat"
 
 USE_TENSORBOARD = True #Log to tensorboard as well as csv logger
 SAVE_MODEL = True #Save model weights to .pt file
-REPEAT_RUNS = 1 #Set to 1 for 1 run
+REPEAT_RUNS = 5 #Set to 1 for 1 run
 IMG_SIZE = 160 #This is the output size of the generated image array
 NUM_WORKERS = 11 #Number of workers in dataloader (usually set to no of CPU cores - 1)
 MAX_IMAGES = -1 #Max number of images to load (-1 for all)
-FLIP_EQUIVARIANCE = True #Enable flip-equivariance (g_resnet models only)
+FLIP_EQUIVARIANCE = False #Enable flip-equivariance (g_resnet models only)
 CUSTOM_PREDICT = False #Use Jia et al (2023) flipped predict function (g_resnet models only)
 
 #HYPERPARAMS
