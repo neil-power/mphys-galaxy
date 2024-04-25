@@ -132,10 +132,10 @@ def get_results_runs(model_ids,mode,METRICS_PATH,max_runs=5):
         best_eces = np.array(best_eces)[~np.isnan(best_eces)]
         best_chiralities = np.array(best_chiralities)[~np.isnan(best_chiralities)]
 
-        repeat_metrics.loc[model] = {"Loss": f"{np.average(best_losses):.4f} ± {np.std(best_losses):.4f}",
-                                        "Accuracy": f"{np.average(best_accs):.2%} ± {np.std(best_accs):.2%}",
-                                        "ECE": f"{np.average(best_eces):.4f} ± {np.std(best_eces):.4f}",
-                                        "C Viol": f"{np.average(best_chiralities):.4f} ± {np.std(best_chiralities):.4f}"}
+        repeat_metrics.loc[model] = {"Loss": f"{(np.average(best_losses) if len(best_losses)>0 else 0):.4f} ± {(np.std(best_losses) if len(best_losses)>0 else 0):.4f}",
+                                        "Accuracy": f"{(np.average(best_accs) if len(best_accs)>0 else 0):.2%} ± {(np.std(best_accs) if len(best_accs)>0 else 0):.2%}",
+                                        "ECE": f"{(np.average(best_eces) if len(best_eces)>0 else 0):.4f} ± {(np.std(best_eces) if len(best_eces)>0 else 0):.4f}",
+                                        "C Viol": f"{(np.average(best_chiralities) if len(best_chiralities)>0 else 0):.4f} ± {(np.std(best_chiralities) if len(best_chiralities)>0 else 0):.4f}"}
     #print(tabulate(repeat_metrics,headers='keys',tablefmt='github'))
     return repeat_metrics
 
