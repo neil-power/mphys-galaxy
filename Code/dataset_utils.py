@@ -65,7 +65,7 @@ def generate_split_from_chirality(num_total,chirality_violation):
 
 # ---------------------------------------------------------------------------------
 
-def generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES=-1,SET_CHIRALITY=None):
+def generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NUM_WORKERS,MAX_IMAGES=-1,RANDOM_ROTATE=False,SET_CHIRALITY=None):
     if DATASET == datasets.CUT_DATASET and MODE != modes.PREDICT:
         train_val_catalog = pd.read_csv(PATHS["CUT_CATALOG_TRAIN_PATH"])[0:MAX_IMAGES]
         train_val_catalog["file_loc"] = get_file_paths(train_val_catalog,PATHS["FULL_DATA_PATH"])
@@ -79,7 +79,7 @@ def generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NU
         datamodule = GalaxyDataModule(
             label_cols=["P_CW","P_ACW","P_OTHER"],
             train_catalog=train_catalog, val_catalog=train_catalog, test_catalog=test_catalog,
-            custom_albumentation_transform=generate_transforms(resize_after_crop=IMG_SIZE),
+            custom_albumentation_transform=generate_transforms(resize_after_crop=IMG_SIZE,random_rotate=RANDOM_ROTATE),
             batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
         )
     else:
@@ -114,8 +114,8 @@ def generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NU
         if MODE == modes.PREDICT:
             datamodule = GalaxyDataModule(
             label_cols=None,
-            predict_catalog=catalog,
-            custom_albumentation_transform=generate_transforms(resize_after_crop=IMG_SIZE),
+            predict_catalog=catalog, #Do not randomly rotate predict catalog
+            custom_albumentation_transform=generate_transforms(resize_after_crop=IMG_SIZE,random_rotate=RANDOM_ROTATE),
             batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
             )
         else:
@@ -123,7 +123,7 @@ def generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE,BATCH_SIZE,NU
                 label_cols=["P_CW","P_ACW","P_OTHER"],
                 catalog=catalog,
                 train_fraction=0.7, val_fraction=0.15, test_fraction=0.15,
-                custom_albumentation_transform=generate_transforms(resize_after_crop=IMG_SIZE),
+                custom_albumentation_transform=generate_transforms(resize_after_crop=IMG_SIZE,random_rotate=RANDOM_ROTATE),
                 batch_size=BATCH_SIZE, num_workers=NUM_WORKERS,
             )
     return datamodule
