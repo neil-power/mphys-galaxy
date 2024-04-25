@@ -67,7 +67,7 @@ class ChiralityClassifier(pl.LightningModule):
         self.scheduler = self.schedulers[scheduler]
         self.loss_fn = nn.CrossEntropyLoss()
         self.custom_predict = custom_predict
-        if model_version == "g_resnet18":
+        if model_version == "g_resnet18" or model_version == "g_resnet50" :
                 self.model = self.model_versions[model_version](num_classes=num_classes,f=flip_eq,custom_predict=custom_predict)
         elif model_version == "g_resnet18_old":
                 self.model = self.model_versions[model_version](num_classes=num_classes,f=flip_eq)
