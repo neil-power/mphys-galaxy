@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from tensorboard_reducer.event_loader import EventAccumulator
 from dataset_utils import create_folder
 from tabulate import tabulate
-
+from numpy.polynomial.polynomial import Polynomial
 
 # ---------------------------------------------------------------------------------
 
@@ -98,7 +98,7 @@ def save_metrics_from_tensorboard_paths(input_path,output_path):
 
 # ---------------------------------------------------------------------------------
     
-def get_results_runs(model_ids,mode,METRICS_PATH,max_runs=5):
+def get_results_runs(model_ids,mode,METRICS_PATH,max_runs=5,clean_titles=True,print_latex=False):
     repeat_metrics = pd.DataFrame(columns=["Loss","Accuracy","ECE","C Viol"],index=model_ids)
     repeat_metrics.columns.name="Model"
     for model in model_ids:
@@ -136,12 +136,16 @@ def get_results_runs(model_ids,mode,METRICS_PATH,max_runs=5):
                                         "Accuracy": f"{(np.average(best_accs) if len(best_accs)>0 else 0):.2%} ± {(np.std(best_accs) if len(best_accs)>0 else 0):.2%}",
                                         "ECE": f"{(np.average(best_eces) if len(best_eces)>0 else 0):.4f} ± {(np.std(best_eces) if len(best_eces)>0 else 0):.4f}",
                                         "C Viol": f"{(np.average(best_chiralities) if len(best_chiralities)>0 else 0):.4f} ± {(np.std(best_chiralities) if len(best_chiralities)>0 else 0):.4f}"}
-    #print(tabulate(repeat_metrics,headers='keys',tablefmt='github'))
+    if print_latex:
+        print(tabulate(repeat_metrics,headers='keys',tablefmt='github'))
+    if clean_titles:
+        repeat_metrics.index = repeat_metrics.index.str.replace('_cut_dataset','')
+        repeat_metrics.index = repeat_metrics.index.str.replace('_repeat','')
     return repeat_metrics
 
 # ---------------------------------------------------------------------------------
 
-def get_predict_results_runs(model_ids,max_runs,METRICS_PATH,dataset_name="full_desi_dataset"):
+def get_predict_results_runs(model_ids,max_runs,METRICS_PATH,dataset_name="full_desi_dataset",clean_titles=True,print_latex=False):
     repeat_metrics = pd.DataFrame(columns=["ACW","CW","Other","C Viol"],index=model_ids)
     repeat_metrics.columns.name="Model"
     for model in model_ids:
@@ -168,7 +172,11 @@ def get_predict_results_runs(model_ids,max_runs,METRICS_PATH,dataset_name="full_
                                         "CW": f"{np.average(cws):.0f} ({np.average(cws)/1e6:.1%}) ± {np.std(cws):.0f}",
                                         "Other": f"{np.average(others):.0f} ({np.average(others)/1e6:.1%}) ± {np.std(others):.0f}",
                                         "C Viol": f"{np.average(c_viols):3.2f} ± {np.std(c_viols):3.2f}"}
-    #print(tabulate(repeat_metrics,headers='keys',tablefmt='latex'))
+    if print_latex:
+        print(tabulate(repeat_metrics,headers='keys',tablefmt='github'))
+    if clean_titles:
+        repeat_metrics.index = repeat_metrics.index.str.replace('_cut_dataset','')
+        repeat_metrics.index = repeat_metrics.index.str.replace('_repeat','')
     return repeat_metrics
 
 # ---------------------------------------------------------------------------------
@@ -188,3 +196,76 @@ def count_spirals(labels):
     return n_z+n_s
 
 # ---------------------------------------------------------------------------------
+
+
+def get_predict_results_runs_cviol(model_ids,c_viols_list,METRICS_PATH,max_runs=5,dataset_name="cut_test_dataset"):
+    repeat_metrics = pd.DataFrame(columns=["C Viol", "C Viol Err","N Spirals","N Spirals Err"],index=model_ids)
+    repeat_metrics.columns.name="Model"
+    for model in model_ids:
+        c_viols = []
+        c_viols_err = []
+        num_spirals = []
+        num_spirals_err = []
+        for c_viol in c_viols_list:
+            predicted_c_viols = []
+            predicted_num_spirals = []
+            for run in range(max_runs):
+                predictions = pd.read_csv(f"{METRICS_PATH}/{model}/version_{run}/{dataset_name}_CVIOL_{c_viol}_predictions.csv",header=None,names=['CW','ACW','Other'], on_bad_lines = 'skip').astype('float')
+                predicted_c_viols.append(chirality_violation(predictions))
+                predicted_num_spirals.append(count_spirals(predictions))
+            c_viols.append(np.average(predicted_c_viols))
+            c_viols_err.append(np.std(predicted_c_viols))
+            num_spirals.append(np.average(predicted_num_spirals))
+            num_spirals_err.append(np.std(predicted_num_spirals))
+        
+        repeat_metrics.loc[model] = {"C Viol": c_viols,
+                                        "C Viol Err": c_viols_err,
+                                        "N Spirals": num_spirals,
+                                        "N Spirals Err": num_spirals_err}
+    return repeat_metrics
+
+# ---------------------------------------------------------------------------------
+
+def plot_cviols(repeat_metrics,model_ids,c_viols_list):
+    fig = plt.figure(figsize=(9,11))
+
+    for i,model in enumerate(model_ids):
+        ax = fig.add_subplot(int(len(model_ids)/2)+1,2,i+1)
+        ax.set_ylabel('Model Predicted C Viol')
+        ax.set_xlabel('Test Dataset Actual C Viol')
+        c_viols = repeat_metrics["C Viol"].iloc[i]
+        c_viols_err = repeat_metrics["C Viol Err"].iloc[i]
+        label = model.replace('_cut_dataset','')
+        label = label.replace('_repeat','')
+        ax.errorbar(c_viols_list,c_viols,yerr=c_viols_err,fmt="x",linewidth=1.7,capsize=5) #label=label
+        ax.plot(c_viols_list,c_viols_list,linewidth=1.7,label="Ideal")
+        fit = Polynomial.fit(c_viols_list,c_viols,deg=1,w=c_viols_err)
+        ax.plot(*fit.linspace(10),label=f"y = {fit.convert().coef[1]:3.2f} x + {fit.convert().coef[0]:3.2f}")
+        ax.grid()
+        ax.set_title(label)
+        ax.set_xticks(c_viols_list)
+        ax.legend()
+    plt.tight_layout()
+    plt.show()
+
+# ---------------------------------------------------------------------------------
+
+def plot_spiral_nums(repeat_metrics,model_ids,c_viols_list):
+    fig = plt.figure(figsize=(9,11))
+
+    for i,model in enumerate(model_ids):
+        ax = fig.add_subplot(int(len(model_ids)/2)+1,2,i+1)
+        ax.set_ylabel('% Spirals Predicted')
+        ax.set_xlabel('Test Dataset Actual C Viol')
+        num_actual = 2333
+        num_spirals = np.array(repeat_metrics["N Spirals"].iloc[i])/num_actual
+        num_spirals_err = np.array(repeat_metrics["N Spirals Err"].iloc[i])/num_actual
+        label = model.replace('_cut_dataset','')
+        label = label.replace('_repeat','')
+        ax.errorbar(c_viols_list,num_spirals,yerr=num_spirals_err,fmt="x",linewidth=1.7,capsize=5) #label=label
+        ax.grid()
+        ax.set_title(label)
+        ax.set_xticks(c_viols_list)
+        ax.set_yticks(np.arange(0.2,0.8,0.1))
+    plt.tight_layout()
+    plt.show()
