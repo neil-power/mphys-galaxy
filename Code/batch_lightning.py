@@ -36,8 +36,8 @@ SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_D
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #jiaresnet50,lenet,g_resnet18,g_resnet50,g_lenet,g_resnet18_old
-MODEL_NAME = "g_resnet50"
-CUSTOM_ID = "c_repeat"
+MODEL_NAME = "g_resnet18"
+CUSTOM_ID = "cr_repeat"
 
 USE_TENSORBOARD = True #Log to tensorboard as well as csv logger
 SAVE_MODEL = True #Save model weights to .pt file
@@ -47,7 +47,7 @@ NUM_WORKERS = 11 #Number of workers in dataloader (usually set to no of CPU core
 MAX_IMAGES = -1 #Max number of images to load (-1 for all)
 FLIP_EQUIVARIANCE = False #Enable flip-equivariance (g_resnet models only)
 CUSTOM_PREDICT = True #Use Jia et al (2023) flipped predict function (g_resnet models only)
-RANDOM_ROTATE = False #Randomly rotate images between 0-360 degrees in training/testing
+RANDOM_ROTATE = True #Randomly rotate images between 0-360 degrees in training/testing
 
 #HYPERPARAMS
 BATCH_SIZE = 100 #Number of images per batch
