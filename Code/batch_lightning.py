@@ -28,16 +28,16 @@ class modes(Enum):
     PREDICT = 2 #Use an existing saved model on an labelled/unlabelled dataset
 
 DATASET = datasets.CUT_DATASET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
-MODE = modes.PREDICT #Select which mode
+MODE = modes.TEST #Select which mode
 
 PREDICT_DATASET = datasets.CUT_TEST_DATASET #If predicting, predict this dataset
-SET_CHIRALITY = -12 #Set to None unless you want to use galaxies from the CUT_DATASET's test dataset with only S and Z galaxies at a set chirality violation (predict only)
+SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_DATASET's test dataset with only S and Z galaxies at a set chirality violation (predict only)
 
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #jiaresnet50,lenet,g_resnet18,g_resnet50,g_lenet,g_resnet18_old
 MODEL_NAME = "g_resnet18"
-CUSTOM_ID = "r_repeat"
+CUSTOM_ID = "cr_repeat"
 
 USE_TENSORBOARD = True #Log to tensorboard as well as csv logger
 SAVE_MODEL = True #Save model weights to .pt file
@@ -46,8 +46,8 @@ IMG_SIZE = 160 #This is the output size of the generated image array
 NUM_WORKERS = 11 #Number of workers in dataloader (usually set to no of CPU cores - 1)
 MAX_IMAGES = -1 #Max number of images to load (-1 for all)
 FLIP_EQUIVARIANCE = False #Enable flip-equivariance (g_resnet models only)
-CUSTOM_PREDICT = False #Use Jia et al (2023) flipped predict function (g_resnet models only)
-RANDOM_ROTATE = True #Randomly rotate images between 0-360 degrees (training only)
+CUSTOM_PREDICT = True #Use Jia et al (2023) flipped predict function (g_resnet models only)
+RANDOM_ROTATE = False #Randomly rotate images between 0-360 degrees (training only)
 
 #HYPERPARAMS
 BATCH_SIZE = 100 #Number of images per batch
