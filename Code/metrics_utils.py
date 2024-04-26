@@ -231,14 +231,14 @@ def plot_cviols(repeat_metrics,model_ids,c_viols_list):
 
     for i,model in enumerate(model_ids):
         ax = fig.add_subplot(int(len(model_ids)/2)+1,2,i+1)
-        ax.set_ylabel('Model Predicted C Viol')
-        ax.set_xlabel('Test Dataset Actual C Viol')
+        ax.set_ylabel('Predicted C Viol')
+        ax.set_xlabel('Actual C Viol')
         c_viols = repeat_metrics["C Viol"].iloc[i]
         c_viols_err = repeat_metrics["C Viol Err"].iloc[i]
         label = model.replace('_cut_dataset','')
         label = label.replace('_repeat','')
         ax.errorbar(c_viols_list,c_viols,yerr=c_viols_err,fmt="x",linewidth=1.7,capsize=5) #label=label
-        ax.plot(c_viols_list,c_viols_list,linewidth=1.7,label="Ideal")
+        ax.plot(c_viols_list,c_viols_list,linewidth=1.7)#,label="Ideal")
         fit = Polynomial.fit(c_viols_list,c_viols,deg=1,w=c_viols_err)
         ax.plot(*fit.linspace(10),label=f"y = {fit.convert().coef[1]:3.2f} x + {fit.convert().coef[0]:3.2f}")
         ax.grid()
@@ -255,8 +255,8 @@ def plot_spiral_nums(repeat_metrics,model_ids,c_viols_list):
 
     for i,model in enumerate(model_ids):
         ax = fig.add_subplot(int(len(model_ids)/2)+1,2,i+1)
-        ax.set_ylabel('% Spirals Predicted')
-        ax.set_xlabel('Test Dataset Actual C Viol')
+        ax.set_ylabel('S & Z Predicted')
+        ax.set_xlabel('Actual C Viol')
         num_actual = 2333
         num_spirals = np.array(repeat_metrics["N Spirals"].iloc[i])/num_actual
         num_spirals_err = np.array(repeat_metrics["N Spirals Err"].iloc[i])/num_actual
@@ -266,6 +266,6 @@ def plot_spiral_nums(repeat_metrics,model_ids,c_viols_list):
         ax.grid()
         ax.set_title(label)
         ax.set_xticks(c_viols_list)
-        ax.set_yticks(np.arange(0.2,0.8,0.1))
+        ax.set_yticks(np.arange(0.2,1.2,0.2))
     plt.tight_layout()
     plt.show()
