@@ -11,7 +11,7 @@ from  matplotlib.colors import LinearSegmentedColormap
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 from custom_models.G_ResNet_18 import G_ResNet18 as G_ResNet18_old
-from Code.custom_models.CE_ResNet import CE_Resnet50
+from custom_models.CE_ResNet import CE_Resnet50
 from custom_models.LeNet import VanillaLeNet
 from custom_models.Steerable_LeNet import CNSteerableLeNet
 from custom_models.G_ResNet import G_ResNet50,G_ResNet18
