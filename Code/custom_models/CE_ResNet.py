@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import torchvision.models as models
 from torchvision.models.resnet import BasicBlock, Bottleneck
 
-class JiaResnet(models.resnet.ResNet):
+class CE_Resnet(models.resnet.ResNet):
     def __init__(self,
         block: Type[Union[BasicBlock, Bottleneck]],
         use_max_pool: bool = True,
@@ -73,12 +73,12 @@ class JiaResnet(models.resnet.ResNet):
          return self.predict(*args, **kwargs)
 
 
-def JiaResnet50(**kwargs: Any) -> JiaResnet:
-    model = JiaResnet(block=Bottleneck, layers=[3, 4, 6, 3], use_max_pool=True,
+def CE_Resnet50(**kwargs: Any) -> CE_Resnet:
+    model = CE_Resnet(block=Bottleneck, layers=[3, 4, 6, 3], use_max_pool=True,
      use_avg_pool=True, avg_pool_size=(1, 1), add_fc=[512, 512, 64, 64],**kwargs)
     return model
 
-def JiaResnet18(**kwargs: Any) -> JiaResnet:
-    model = JiaResnet(block=BasicBlock, layers=[2, 2, 2, 2], use_max_pool=True,
+def CEResnet18(**kwargs: Any) -> CE_Resnet:
+    model = CE_Resnet(block=BasicBlock, layers=[2, 2, 2, 2], use_max_pool=True,
      use_avg_pool=True, avg_pool_size=(1, 1), add_fc=[512, 512, 64, 64],**kwargs)
     return model

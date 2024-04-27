@@ -11,7 +11,7 @@ from  matplotlib.colors import LinearSegmentedColormap
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 from custom_models.G_ResNet_18 import G_ResNet18 as G_ResNet18_old
-from custom_models.Jia_ResNet import JiaResnet50
+from Code.custom_models.CE_ResNet import CE_Resnet50
 from custom_models.LeNet import VanillaLeNet
 from custom_models.Steerable_LeNet import CNSteerableLeNet
 from custom_models.G_ResNet import G_ResNet50,G_ResNet18
@@ -20,7 +20,7 @@ class ChiralityClassifier(pl.LightningModule):
     """
     Models:
     resnet18 - resnet34 - resnet50 - resnet101 - resnet152
-    jiaresnet50 - lenet - g_lenet - g_resnet18_old
+    ce_resnet50 - lenet - g_lenet - g_resnet18_old
     g_resnet18 - g_resnet50
     """
     model_versions = {
@@ -29,7 +29,7 @@ class ChiralityClassifier(pl.LightningModule):
         "resnet50": models.resnet50,
         "resnet101": models.resnet101,
         "resnet152": models.resnet152,
-        "jiaresnet50": JiaResnet50,
+        "ce_resnet50": CE_Resnet50,
         "g_resnet18_old": G_ResNet18_old,
         "lenet": VanillaLeNet,
         "g_lenet": CNSteerableLeNet,

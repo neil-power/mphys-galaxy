@@ -35,7 +35,7 @@ SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_D
 
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
-#jiaresnet50,lenet,g_resnet18,g_resnet50,g_lenet,g_resnet18_old
+#ce_resnet50,lenet,g_resnet18,g_resnet50,g_lenet,g_resnet18_old
 MODEL_NAME = "g_resnet18"
 CUSTOM_ID = "cr_repeat"
 
@@ -100,7 +100,7 @@ for run in REPEAT_RUNS:
     create_folder(save_dir)
 
     model = ChiralityClassifier(
-        num_classes=(2 if (MODEL_NAME=="jiaresnet50" or CUSTOM_PREDICT) else 3), #2 for Jia et al version
+        num_classes=(2 if (MODEL_NAME=="ce_resnet50" or CUSTOM_PREDICT) else 3), #2 for Jia et al version
         model_version=MODEL_NAME,
         optimizer="adamw",
         scheduler  ="steplr",
