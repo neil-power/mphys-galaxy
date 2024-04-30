@@ -41,7 +41,7 @@ CUSTOM_ID = "c120_repeat"
 
 USE_TENSORBOARD = True #Log to tensorboard as well as csv logger
 SAVE_MODEL = True #Save model weights to .pt file
-REPEAT_RUNS = [3,4] #Set to 1 for 1 run, or a list for specific runs
+REPEAT_RUNS = [2] #Set to 1 for 1 run, or a list for specific runs
 IMG_SIZE = 160 #This is the output size of the generated image array
 NUM_WORKERS = 11 #Number of workers in dataloader (usually set to no of CPU cores - 1)
 MAX_IMAGES = -1 #Max number of images to load (-1 for all)
@@ -72,7 +72,7 @@ if len(CUSTOM_ID) == 0:
     MODEL_ID = f"{MODEL_NAME}_{DATASET.name.lower()}"
 else:
      MODEL_ID = f"{MODEL_NAME}_{DATASET.name.lower()}_{CUSTOM_ID}"
-print(f"********** Running model {MODEL_ID} in mode {MODE.name.lower()} ***********")
+print(f"********** Running model {MODEL_ID} in mode {MODE.name.lower()} for runs {REPEAT_RUNS}***********")
 if MODE != modes.TRAIN:
     USE_TENSORBOARD = False #Don"t log to tensorboard if not training
     SAVE_MODEL = False #Don"t save weights if testing or predicting model
@@ -94,6 +94,7 @@ else:
     datamodule.setup()
 
 for run in REPEAT_RUNS:
+    print(f"*************************************** Run number {run} ***************************************")
     
     save_dir = f"{PATHS['METRICS_PATH']}/{MODEL_ID}/version_{run}"
     MODEL_PATH = f"{save_dir}/model.pt"
