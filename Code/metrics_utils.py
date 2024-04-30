@@ -137,7 +137,7 @@ def get_results_runs(model_ids,mode,METRICS_PATH,max_runs=5,clean_titles=True,pr
                                         "ECE": f"{(np.average(best_eces) if len(best_eces)>0 else 0):.4f} ± {(np.std(best_eces) if len(best_eces)>0 else 0):.4f}",
                                         "C Viol": f"{(np.average(best_chiralities) if len(best_chiralities)>0 else 0):.4f} ± {(np.std(best_chiralities) if len(best_chiralities)>0 else 0):.4f}"}
     if print_latex:
-        print(tabulate(repeat_metrics,headers='keys',tablefmt='github'))
+        print(tabulate(repeat_metrics,headers='keys',tablefmt='latex'))
     if clean_titles:
         repeat_metrics.index = repeat_metrics.index.str.replace('_cut_dataset','')
         repeat_metrics.index = repeat_metrics.index.str.replace('_repeat','')
@@ -167,13 +167,13 @@ def get_predict_results_runs(model_ids,max_runs,METRICS_PATH,dataset_name="full_
             except:
                 print(f"Error with {model}, run {run}")
         
-        
+        #HARDCODED 1 MIL GALAXIES!!!!
         repeat_metrics.loc[model] = {"ACW": f"{np.average(acws):.0f} ({np.average(acws)/1e6:.1%}) ± {np.std(acws):.0f}",
                                         "CW": f"{np.average(cws):.0f} ({np.average(cws)/1e6:.1%}) ± {np.std(cws):.0f}",
                                         "Other": f"{np.average(others):.0f} ({np.average(others)/1e6:.1%}) ± {np.std(others):.0f}",
                                         "C Viol": f"{np.average(c_viols):3.2f} ± {np.std(c_viols):3.2f}"}
     if print_latex:
-        print(tabulate(repeat_metrics,headers='keys',tablefmt='github'))
+        print(tabulate(repeat_metrics,headers='keys',tablefmt='latex'))
     if clean_titles:
         repeat_metrics.index = repeat_metrics.index.str.replace('_cut_dataset','')
         repeat_metrics.index = repeat_metrics.index.str.replace('_repeat','')
@@ -226,11 +226,19 @@ def get_predict_results_runs_cviol(model_ids,c_viols_list,METRICS_PATH,max_runs=
 
 # ---------------------------------------------------------------------------------
 
-def plot_cviols(repeat_metrics,model_ids,c_viols_list):
-    fig = plt.figure(figsize=(9,11))
-
+def plot_cviols(repeat_metrics,model_ids,c_viols_list,title=True):
+    
+    if len(model_ids) == 1:
+        fig = plt.figure(figsize=(6,4))
+        xsize = 1
+        ysize=1
+    else:
+        fig = plt.figure(figsize=(9,11))
+        xsize = int(len(model_ids)/2)+1
+        ysize=2
+        
     for i,model in enumerate(model_ids):
-        ax = fig.add_subplot(int(len(model_ids)/2)+1,2,i+1)
+        ax = fig.add_subplot(xsize,ysize,i+1)
         ax.set_ylabel('Predicted C Viol')
         ax.set_xlabel('Actual C Viol')
         c_viols = repeat_metrics["C Viol"].iloc[i]
@@ -242,7 +250,8 @@ def plot_cviols(repeat_metrics,model_ids,c_viols_list):
         fit = Polynomial.fit(c_viols_list,c_viols,deg=1,w=c_viols_err)
         ax.plot(*fit.linspace(10),label=f"y = {fit.convert().coef[1]:3.2f} x + {fit.convert().coef[0]:3.2f}")
         ax.grid()
-        ax.set_title(label)
+        if title:
+            ax.set_title(label)
         ax.set_xticks(c_viols_list)
         ax.legend()
     plt.tight_layout()

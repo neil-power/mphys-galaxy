@@ -139,3 +139,22 @@ def get_device():
         print(f"Cached Memory: {round(torch.cuda.memory_reserved(0)/1024**3,1)} GB")
     print("Using device:", device)
     return device
+
+# ---------------------------------------------------------------------------------
+
+def nhwc_to_nchw(x: torch.Tensor) -> torch.Tensor:
+    #(n,height,width,channels) to (n,channels,height,width)
+    if x.dim() == 4:
+        x = x if x.shape[1] == 3 else x.permute(0, 3, 1, 2)
+    elif x.dim() == 3:
+        x = x if x.shape[0] == 3 else x.permute(2, 0, 1)
+    return x
+
+# ---------------------------------------------------------------------------------
+def nchw_to_nhwc(x: torch.Tensor) -> torch.Tensor:
+    #(n,channels,height,width) to (n,height,width,channels) 
+    if x.dim() == 4:
+        x = x if x.shape[3] == 3 else x.permute(0, 2, 3, 1)
+    elif x.dim() == 3:
+        x = x if x.shape[2] == 3 else x.permute(1, 2, 0)
+    return x
