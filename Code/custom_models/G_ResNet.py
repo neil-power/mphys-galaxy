@@ -218,6 +218,7 @@ class G_ResNet(torch.nn.Module):
                  fixparams: bool = True,
                  initial_stride: int = 1,
                  NOISY: bool = False,
+                 enable_dropout = False,
                  custom_predict: bool = False, #Use Jia et al predict function
                  ):
         r"""
@@ -314,6 +315,8 @@ class G_ResNet(torch.nn.Module):
         self.relu = enn.ReLU(self.bn.out_type, inplace=True)
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.gpool = enn.GroupPooling(self.bn.out_type)
+        self.enable_dropout = enable_dropout
+        self.drop = enn.PointwiseDropout(self.gpool.out_type,p=0.5)#that is not the right type
         self.linear = torch.nn.Linear(self.gpool.out_type.size, num_classes)
 
         for name, module in self.named_modules():
@@ -329,6 +332,12 @@ class G_ResNet(torch.nn.Module):
             print("MODEL TOPOLOGY:")
             for i, (name, mod) in enumerate(self.named_modules()):
                 print(f"\t{i} - {name}")
+
+    def enable_dropout_func(self):
+        for m in self.modules():
+            if isinstance(m, enn.PointwiseDropout):
+                m.train()
+        return
 
     def basicLayer(self, block, planes: int, num_blocks: int, dropout_rate: float, stride: int, NOISY: bool,
                     totrivial: bool = False
@@ -388,6 +397,9 @@ class G_ResNet(torch.nn.Module):
         out = self.relu(out)
         out = self.gpool(out)
 
+        if self.enable_dropout:
+            out=self.drop(out)
+
         # extract the tensor from the GeometricTensor to use the common Pytorch operations
         out = out.tensor
         gpool_out = out
@@ -396,6 +408,7 @@ class G_ResNet(torch.nn.Module):
         out = F.avg_pool2d(out, (w, h))
 
         out = out.view(out.size(0), -1)
+
         out = self.linear(out)
 
         return out #, gpool_out

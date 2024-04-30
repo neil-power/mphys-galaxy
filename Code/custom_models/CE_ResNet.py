@@ -13,6 +13,7 @@ class CE_Resnet(models.resnet.ResNet):
         use_max_pool: bool = True,
         use_avg_pool: bool = True,
         num_classes: int = 2,
+        enable_dropout = False,
         avg_pool_size: Tuple[int] = (1, 1),
         add_fc: Optional[List[int]] = None, *args, **kwargs):
         
@@ -29,6 +30,8 @@ class CE_Resnet(models.resnet.ResNet):
 
         self.use_max_pool = use_max_pool
         self.use_avg_pool = use_avg_pool
+        self.enable_dropout = enable_dropout
+        self.drop  = nn.Dropout(p=0.5)
 
     def _make_fc(self, in_features: int, out_features: int, add_fc: Optional[List[int]]):
         if add_fc is None:
@@ -42,6 +45,12 @@ class CE_Resnet(models.resnet.ResNet):
                 if i != len(add_fc) - 2:
                     fc_layers.append(nn.Tanh())
             return nn.Sequential(*fc_layers)
+        
+    def enable_dropout_func(self):
+        for m in self.modules():
+            if isinstance(m, nn.Dropout):
+                m.train()
+        return
         
     def _forward_impl(self, x: Tensor) -> Tensor: #Override forward
         # See note [TorchScript super()]
@@ -59,9 +68,14 @@ class CE_Resnet(models.resnet.ResNet):
         if self.use_avg_pool:
             x = self.avgpool(x)
         x = torch.flatten(x, 1)
+
+        if self.enable_dropout:
+            x=self.drop(x)
+
         x = self.fc(x)
 
         return x
+    
  
     def predict(self, x: Tensor) -> Tensor: #Override predict
         x_i = torch.flip(x, (-1,))
