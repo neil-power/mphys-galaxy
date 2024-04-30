@@ -28,7 +28,7 @@ class modes(Enum):
     PREDICT = 2 #Use an existing saved model on an labelled/unlabelled dataset
 
 DATASET = datasets.CUT_DATASET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
-MODE = modes.TRAIN #Select which mode
+MODE = modes.TEST #Select which mode
 
 PREDICT_DATASET = datasets.CUT_TEST_DATASET #If predicting, predict this dataset
 SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_DATASET's test dataset with only S and Z galaxies at a set chirality violation (predict only)
@@ -36,12 +36,12 @@ SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_D
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #ce_resnet50,lenet,g_resnet18,g_resnet50,g_lenet,g_resnet18_old
-MODEL_NAME = "g_resnet50"
+MODEL_NAME = "g_resnet18"
 CUSTOM_ID = "c120_repeat"
 
 USE_TENSORBOARD = True #Log to tensorboard as well as csv logger
 SAVE_MODEL = True #Save model weights to .pt file
-REPEAT_RUNS = [2] #Set to 1 for 1 run, or a list for specific runs
+REPEAT_RUNS = [0,1,2] #Set to 1 for 1 run, or a list for specific runs
 IMG_SIZE = 160 #This is the output size of the generated image array
 NUM_WORKERS = 11 #Number of workers in dataloader (usually set to no of CPU cores - 1)
 MAX_IMAGES = -1 #Max number of images to load (-1 for all)
@@ -50,7 +50,7 @@ CUSTOM_PREDICT = True #Use Jia et al (2023) flipped predict function (g_resnet m
 RANDOM_ROTATE = True #Randomly rotate images between 0-360 degrees (training only)
 
 #HYPERPARAMS
-BATCH_SIZE = 60 #Number of images per batch, cannot be >60 for resnet50_c (takes 45GB ram)
+BATCH_SIZE = 100 #Number of images per batch, cannot be >60 for resnet50_c (takes 45GB ram)
 LEARNING_RATE = 0.0001
 MAX_EPOCHS = 120
 
@@ -72,7 +72,7 @@ if len(CUSTOM_ID) == 0:
     MODEL_ID = f"{MODEL_NAME}_{DATASET.name.lower()}"
 else:
      MODEL_ID = f"{MODEL_NAME}_{DATASET.name.lower()}_{CUSTOM_ID}"
-print(f"********** Running model {MODEL_ID} in mode {MODE.name.lower()} for runs {REPEAT_RUNS}***********")
+print(f"********** Running model {MODEL_ID} in mode {MODE.name.lower()} for runs {REPEAT_RUNS} ***********")
 if MODE != modes.TRAIN:
     USE_TENSORBOARD = False #Don"t log to tensorboard if not training
     SAVE_MODEL = False #Don"t save weights if testing or predicting model
