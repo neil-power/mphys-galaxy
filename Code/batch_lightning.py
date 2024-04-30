@@ -48,6 +48,7 @@ MAX_IMAGES = -1 #Max number of images to load (-1 for all)
 FLIP_EQUIVARIANCE = False #Enable flip-equivariance (g_resnet models only)
 CUSTOM_PREDICT = True #Use Jia et al (2023) flipped predict function (g_resnet models only)
 RANDOM_ROTATE = True #Randomly rotate images between 0-360 degrees (training only)
+ENABLE_DROPOUT = False #Add dropout layer (g_resnet and ce-resnet models only)
 
 #HYPERPARAMS
 BATCH_SIZE = 100 #Number of images per batch, cannot be >60 for resnet50_c (takes 45GB ram)
@@ -112,7 +113,8 @@ for run in REPEAT_RUNS:
         weights=(MODEL_PATH if MODE != modes.TRAIN else None),
         graph_save_path=(f"{save_dir}/val_matrix.png" if MODE == modes.TRAIN else f"{save_dir}/{MODE.name.lower()}_matrix.png"),
         flip_eq=FLIP_EQUIVARIANCE,
-        custom_predict = CUSTOM_PREDICT
+        custom_predict = CUSTOM_PREDICT,
+        enable_dropout = ENABLE_DROPOUT
     )
 
     tb_logger = TensorBoardLogger(PATHS["LOG_PATH"], name=MODEL_ID,version=f"version_{run}_{MODE.name.lower()}")
