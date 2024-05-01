@@ -36,12 +36,12 @@ SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_D
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #ce_resnet50,lenet,g_resnet18,g_resnet50,g_lenet,g_resnet18_old
-MODEL_NAME = "resnet50"
+MODEL_NAME = "g_resnet18"
 CUSTOM_ID = ""
 
 USE_TENSORBOARD = True #Log to tensorboard as well as csv logger
 SAVE_MODEL = True #Save model weights to .pt file
-REPEAT_RUNS = [0,1,2,3,4] #Set to 1 for 1 run, or a list for specific runs
+REPEAT_RUNS = [1,2,3,4] #Set to 1 for 1 run, or a list for specific runs
 IMG_SIZE = 160 #This is the output size of the generated image array
 NUM_WORKERS = 11 #Number of workers in dataloader (usually set to no of CPU cores - 1)
 MAX_IMAGES = -1 #Max number of images to load (-1 for all)
@@ -148,14 +148,15 @@ for run in REPEAT_RUNS:
             total_predict_batches = min(10, dataloader_len)
             subset_size = dataloader_len // total_predict_batches
             for i in range(total_predict_batches):
-                print(f"Loading predict batch {i} of {total_predict_batches}")
+                print(f"Loading predict batch {i} (size {subset_size} of {total_predict_batches} (size {dataloader_len})")
                 start_idx = i * subset_size
                 end_idx = min((i + 1) * subset_size, dataloader_len)
 
                 #Create a new dataloader only containing the subset of objects
                 subset = torch.utils.data.Subset(datamodule.predict_dataset,range(start_idx,end_idx))
                 subset_loader = pl.LightningDataModule().from_datasets(predict_dataset=subset,batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
-
+                subset_loader.prepare_data()
+                subset_loader.setup(stage='predict')
                 predictions = trainer.predict(model,dataloaders=subset_loader.predict_dataloader())
                 predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_{i}_predictions.csv"
                 if os.path.exists(predict_save_path):
