@@ -145,7 +145,7 @@ def get_results_runs(model_ids,mode,METRICS_PATH,max_runs=5,clean_titles=True,pr
 
 # ---------------------------------------------------------------------------------
 
-def get_predict_results_runs(model_ids,max_runs,METRICS_PATH,dataset_name="full_desi_dataset",clean_titles=True,print_latex=False):
+def get_predict_results_runs_old(model_ids,max_runs,METRICS_PATH,dataset_name="full_desi_dataset",clean_titles=True,print_latex=False):
     repeat_metrics = pd.DataFrame(columns=["ACW","CW","Other","C Viol"],index=model_ids)
     repeat_metrics.columns.name="Model"
     for model in model_ids:
@@ -171,6 +171,50 @@ def get_predict_results_runs(model_ids,max_runs,METRICS_PATH,dataset_name="full_
         repeat_metrics.loc[model] = {"ACW": f"{np.average(acws):.0f} ({np.average(acws)/1e6:.1%}) ± {np.std(acws):.0f}",
                                         "CW": f"{np.average(cws):.0f} ({np.average(cws)/1e6:.1%}) ± {np.std(cws):.0f}",
                                         "Other": f"{np.average(others):.0f} ({np.average(others)/1e6:.1%}) ± {np.std(others):.0f}",
+                                        "C Viol": f"{np.average(c_viols):3.2f} ± {np.std(c_viols):3.2f}"}
+    if print_latex:
+        print(tabulate(repeat_metrics,headers='keys',tablefmt='latex'))
+    if clean_titles:
+        repeat_metrics.index = repeat_metrics.index.str.replace('_cut_dataset','')
+        repeat_metrics.index = repeat_metrics.index.str.replace('_repeat','')
+    return repeat_metrics
+
+# ---------------------------------------------------------------------------------
+
+def get_predict_results_runs(model_ids,max_runs,METRICS_PATH,dataset_name="full_desi_dataset",clean_titles=True,print_latex=False,max_batch=10,errors=True):
+    repeat_metrics = pd.DataFrame(columns=["ACW","CW","Other","C Viol"],index=model_ids)
+    repeat_metrics.columns.name="Model"
+    for model in model_ids:
+        total = 0
+        acws = []
+        cws = []
+        others = []
+        c_viols = []
+        for run in range(max_runs):
+            num = 0
+            num_cw = 0
+            num_acw = 0
+            num_other = 0
+            for batch in range(max_batch):
+                try:
+                    predictions = pd.read_csv(f"{METRICS_PATH}/{model}/version_{run}/{dataset_name}_{batch}_predictions.csv",header=None,names=['CW','ACW','Other']).astype('float')#, on_bad_lines = 'skip'
+                    num += predictions.shape[0]
+                    num_cw += np.count_nonzero(predictions['CW']>0.5)
+                    num_acw += np.count_nonzero(predictions['ACW']>0.5)
+                    num_other += predictions.shape[0] - num_acw - num_acw
+                except:
+                    if errors:
+                        print(f"Error with {model}, run {run}, batch {batch}")
+            acws.append(num_acw)
+            cws.append(num_cw)
+            others.append(num_other)
+            c_viol = (num_acw-num_cw)/np.sqrt(num_cw+num_acw)
+            c_viols.append(c_viol)
+            total += num
+        total /=max_runs
+        repeat_metrics.loc[model] = {"ACW": f"{np.average(acws):.0f} ({np.average(acws)/total:.1%}) ± {np.std(acws):.0f}",
+                                        "CW": f"{np.average(cws):.0f} ({np.average(cws)/total:.1%}) ± {np.std(cws):.0f}",
+                                        "Other": f"{np.average(others):.0f} ({np.average(others)/total:.1%}) ± {np.std(others):.0f}",
                                         "C Viol": f"{np.average(c_viols):3.2f} ± {np.std(c_viols):3.2f}"}
     if print_latex:
         print(tabulate(repeat_metrics,headers='keys',tablefmt='latex'))
@@ -226,21 +270,24 @@ def get_predict_results_runs_cviol(model_ids,c_viols_list,METRICS_PATH,max_runs=
 
 # ---------------------------------------------------------------------------------
 
-def plot_cviols(repeat_metrics,model_ids,c_viols_list,title=True):
+def plot_cviols(repeat_metrics,model_ids,c_viols_list,title=True,dims=(9,11)):
     
     if len(model_ids) == 1:
-        fig = plt.figure(figsize=(6,4))
+        if dims == (9,11):
+            dims = (6,4)
+        fig = plt.figure(figsize=dims)
         xsize = 1
         ysize=1
     else:
-        fig = plt.figure(figsize=(9,11))
+        fig = plt.figure(figsize=dims)
         xsize = int(len(model_ids)/2)+1
         ysize=2
         
     for i,model in enumerate(model_ids):
         ax = fig.add_subplot(xsize,ysize,i+1)
-        ax.set_ylabel('Predicted C Viol')
-        ax.set_xlabel('Actual C Viol')
+        ax.set_ylabel('Predicted C Viol',fontsize=14)
+        ax.set_xlabel('Actual C Viol',fontsize=14)
+        ax.tick_params(axis='both', which='major', labelsize=14)
         c_viols = repeat_metrics["C Viol"].iloc[i]
         c_viols_err = repeat_metrics["C Viol Err"].iloc[i]
         label = model.replace('_cut_dataset','')
@@ -253,7 +300,7 @@ def plot_cviols(repeat_metrics,model_ids,c_viols_list,title=True):
         if title:
             ax.set_title(label)
         ax.set_xticks(c_viols_list)
-        ax.legend()
+        ax.legend(fontsize=14)
     plt.tight_layout()
     plt.show()
 
