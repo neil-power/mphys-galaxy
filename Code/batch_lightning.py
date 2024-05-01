@@ -28,25 +28,25 @@ class modes(Enum):
     PREDICT = 2 #Use an existing saved model on an labelled/unlabelled dataset
 
 DATASET = datasets.CUT_DATASET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
-MODE = modes.TEST #Select which mode
+MODE = modes.PREDICT #Select which mode
 
-PREDICT_DATASET = datasets.CUT_TEST_DATASET #If predicting, predict this dataset
+PREDICT_DATASET = datasets.FULL_DESI_DATASET #If predicting, predict this dataset
 SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_DATASET's test dataset with only S and Z galaxies at a set chirality violation (predict only)
 
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #ce_resnet50,lenet,g_resnet18,g_resnet50,g_lenet,g_resnet18_old
-MODEL_NAME = "g_resnet50"
-CUSTOM_ID = "c"
+MODEL_NAME = "resnet50"
+CUSTOM_ID = ""
 
 USE_TENSORBOARD = True #Log to tensorboard as well as csv logger
 SAVE_MODEL = True #Save model weights to .pt file
-REPEAT_RUNS = [2] #Set to 1 for 1 run, or a list for specific runs
+REPEAT_RUNS = [0,1,2,3,4] #Set to 1 for 1 run, or a list for specific runs
 IMG_SIZE = 160 #This is the output size of the generated image array
 NUM_WORKERS = 11 #Number of workers in dataloader (usually set to no of CPU cores - 1)
 MAX_IMAGES = -1 #Max number of images to load (-1 for all)
 FLIP_EQUIVARIANCE = False #Enable flip-equivariance (g_resnet models only)
-CUSTOM_PREDICT = True #Use Jia et al (2023) flipped predict function (g_resnet models only)
+CUSTOM_PREDICT = False #Use Jia et al (2023) flipped predict function (g_resnet models only)
 RANDOM_ROTATE = True #Randomly rotate images between 0-360 degrees (training only)
 ENABLE_DROPOUT = False #Add dropout layer (g_resnet and ce-resnet models only)
 
@@ -128,8 +128,6 @@ for run in REPEAT_RUNS:
         enable_checkpointing=False,
     )
 
-
-
     #compiled_model = torch.compile(model, backend="eager")
     
     if MODE==modes.TRAIN:
@@ -143,16 +141,40 @@ for run in REPEAT_RUNS:
         trainer.test(model,dataloaders=datamodule.test_dataloader())
         
     elif MODE==modes.PREDICT:
-        predictions = trainer.predict(model,dataloaders=datamodule.predict_dataloader())
-        if SET_CHIRALITY is not None:
-            predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_CVIOL_{SET_CHIRALITY}_predictions.csv"
-        else:
-            predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_predictions.csv"
-        if os.path.exists(predict_save_path):
-            os.remove(predict_save_path)
-        for batch in predictions: #Save predictions
-            batch = pd.DataFrame(torch.softmax(batch,dim=1))
-            batch.to_csv(predict_save_path,mode='a', index=False, header=False)
+
+        if PREDICT_DATASET == datasets.FULL_DESI_DATASET:
+            #Need to split into smaller batches to avoid keeping an array of 8.7mil predictions
+            dataloader_len = len(datamodule.predict_dataset)
+            total_predict_batches = min(10, dataloader_len)
+            subset_size = dataloader_len // total_predict_batches
+            for i in range(total_predict_batches):
+                print(f"Loading predict batch {i} of {total_predict_batches}")
+                start_idx = i * subset_size
+                end_idx = min((i + 1) * subset_size, dataloader_len)
+
+                #Create a new dataloader only containing the subset of objects
+                subset = torch.utils.data.Subset(datamodule.predict_dataset,range(start_idx,end_idx))
+                subset_loader = pl.LightningDataModule().from_datasets(predict_dataset=subset,batch_size=BATCH_SIZE, num_workers=NUM_WORKERS)
+
+                predictions = trainer.predict(model,dataloaders=subset_loader.predict_dataloader())
+                predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_{i}_predictions.csv"
+                if os.path.exists(predict_save_path):
+                    os.remove(predict_save_path)
+                # ordered by batches
+                for batch in predictions: #Save predictions
+                    batch = pd.DataFrame(torch.softmax(batch,dim=1))
+                    batch.to_csv(predict_save_path,mode='a', index=False, header=False)
+        else: 
+            if SET_CHIRALITY is not None:
+                predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_CVIOL_{SET_CHIRALITY}_predictions.csv"
+            else:
+                predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_predictions.csv"
+            if os.path.exists(predict_save_path):
+                os.remove(predict_save_path)
+            predictions = trainer.predict(model,dataloaders=datamodule.predict_dataloader())
+            for batch in predictions: #Save predictions
+                batch = pd.DataFrame(torch.softmax(batch,dim=1))
+                batch.to_csv(predict_save_path,mode='a', index=False, header=False)
 
 
     if MODE != modes.PREDICT and SET_CHIRALITY is None:
