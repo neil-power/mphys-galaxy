@@ -201,7 +201,7 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
 
         output_list, input_list = [], []
         for i in range(T):
-            print("hi"+str(i))
+            #print("hi"+str(i))
             x = model(data_rotate)
             input_list.append(x.unsqueeze(0).cpu())
             output_list.append(torch.unsqueeze(F.softmax(x,dim=1), 0).cpu())
