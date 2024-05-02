@@ -3,15 +3,12 @@ import math
 import numpy as np
 import pylab as pl
 import pandas as pd
-from torchinfo import summary
-import torchvision.models as models
-from custom_models.G_ResNet import G_ResNet50,G_ResNet18
+from custom_models.G_ResNet import G_ResNet50
 from custom_models.CE_ResNet import CE_Resnet50
 from dataset_utils import *
 from enum import Enum
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from collections import OrderedDict
 
@@ -31,8 +28,8 @@ G_resnet= G_ResNet50(num_classes = 2, custom_predict=True, enable_dropout=True)
 CE_resnet= CE_Resnet50(enable_dropout = True)
 
 # %%
-state_dict_G = torch.load('../Metrics/g_resnet50_cut_dataset_c/version_0/model.pt')
-state_dict_CE = torch.load('../Metrics/CE_resnet50_cut_dataset/version_0/model.pt')
+state_dict_G = torch.load('/share/nas2/npower/mphys-galaxy/Metrics/g_resnet50_cut_dataset_c/version_0/model.pt')
+state_dict_CE = torch.load('/share/nas2/npower/mphys-galaxy/Metrics/ce_resnet50_cut_dataset/version_0/model.pt')
 
 G_resnet.load_state_dict(stat_dict_cut(state_dict_G))
 CE_resnet.load_state_dict(stat_dict_cut(state_dict_CE)) #after this works, switch out for a chirality classifier
@@ -55,8 +52,16 @@ DATASET = datasets.CUT_TEST_DATASET #Select which dataset to train on, or if tes
 MODE = modes.PREDICT #Select which mode
 
 PATHS = dict(
-    LOCAL_SUBSET_DATA_PATH =  "../Data/Subset",
-    LOCAL_SUBSET_CATALOG_PATH =  "../Data/gz1_desi_cross_cat_local_subset.csv",
+    METRICS_PATH = "/share/nas2/npower/mphys-galaxy/Metrics",
+    LOG_PATH = "/share/nas2/npower/mphys-galaxy/Code/lightning_logs",
+    FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg',
+    LOCAL_SUBSET_DATA_PATH = '/share/nas2/npower/mphys-galaxy/Data/Subset',
+    FULL_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat.csv',
+    FULL_DESI_CATALOG_PATH =  '/share/nas2/npower/mphys-galaxy/Data/desi_full_cat.parquet',
+    CUT_CATALOG_TEST_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_testing.csv',
+    CUT_CATALOG_TRAIN_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_train_val_downsample.csv',
+    BEST_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_best_subset.csv',
+    LOCAL_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_local_subset.csv',
 )
 
 # %%
@@ -64,7 +69,7 @@ PATHS = dict(
 #catalog = pd.read_csv( "../Data/gz1_desi_cross_cat_local_subset.csv")[0:1]
 #catalog["file_loc"] = get_file_paths(catalog,LOCAL_SUBSET_DATA_PATH)
 
-datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE=160, NUM_WORKERS=1,BATCH_SIZE=1, MAX_IMAGES=10)
+datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE=160, NUM_WORKERS=11,BATCH_SIZE=1, MAX_IMAGES=10)
 datamodule.prepare_data()
 datamodule.setup(stage='predict')
 #image=torch.from_numpy(datamodule.predict_dataset[0])
@@ -197,7 +202,7 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
         #p = F.softmax(x,dim=1)
                                          
         # run 100 stochastic forward passes:
-        #model.enable_dropout_func() #yeah we need to fix this
+        model.enable_dropout_func() #yeah we need to fix this
 
         output_list, input_list = [], []
         for i in range(T):
@@ -208,7 +213,7 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
             x=None
                                          
         # calculate the mean output for each target:
-        output_mean = np.squeeze(torch.cat(output_list, 0).mean(0).data.cpu().numpy())
+        #output_mean = np.squeeze(torch.cat(output_list, 0).mean(0).data.cpu().numpy())
                                              
         # append per rotation output into list:
         outp_list.append(np.squeeze(torch.cat(output_list, 0).data.numpy()))
@@ -280,7 +285,7 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
         fig2.subplots_adjust(bottom=0.15)
 
         #pl.show()
-        fig2.savefig("../roterr/"+str(idx)+".png")
+        fig2.savefig("/share/nas2/npower/mphys-galaxy/Metrics/roterr/"+str(idx)+".png")
     
         pl.close()
     
