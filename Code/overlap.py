@@ -6,11 +6,9 @@ from custom_models.G_ResNet import G_ResNet50
 from custom_models.CE_ResNet import CE_Resnet50
 from dataset_utils import *
 from enum import Enum
-
 import torch
 import torch.nn.functional as F
 from collections import OrderedDict
-
 from matplotlib.offsetbox import (OffsetImage, AnnotationBbox)
 
 def stat_dict_cut(state_dict):
@@ -262,8 +260,9 @@ print("Models loaded")
 
 overlap_results = pd.DataFrame(columns=['Steerable Overlap','Steerable Err','CE Overlap','CE Err'])
 i=0
-for data1 in datamodule.predict_dataloader():
+for i in range(10):
     print("Begining assesment on image "+str(i))
+    data1 = torch.Tensor(datamodule.predict_dataset[i]).unsqueeze(0)
     av_overlap2, std_overlap2 = fr_rotation_test(CE_resnet, data=data1, idx ="resnet_CE_"+str(i), target=None, PLOT=True)
     print("Resnet run completed")
     av_overlap1, std_overlap1 = fr_rotation_test(G_resnet, data=data1, idx ="resnet_G_"+ str(i), target=None, PLOT=True)
