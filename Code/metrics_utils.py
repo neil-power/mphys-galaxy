@@ -9,6 +9,9 @@ from dataset_utils import create_folder
 from tabulate import tabulate
 from numpy.polynomial.polynomial import Polynomial
 
+#          blue      orange     reddish purple  sky blue   bluish green  amber        vermillion  
+colours = ["#0072B2","#E69F00","#CC79A7",       "#56B4E9",  "#009E73",  "#D55E00",'black','grey'  ]
+
 # ---------------------------------------------------------------------------------
 
 def save_metrics_from_logger(model_id,log_path,metrics_path,version=0,mode='train',save=True):
@@ -140,49 +143,12 @@ def get_results_runs(model_ids,mode,METRICS_PATH,max_runs=5,clean_titles=True,pr
         print(tabulate(repeat_metrics,headers='keys',tablefmt='latex'))
     if clean_titles:
         repeat_metrics.index = repeat_metrics.index.str.replace('_cut_dataset','')
-        repeat_metrics.index = repeat_metrics.index.str.replace('_repeat','')
-    return repeat_metrics
-
-# ---------------------------------------------------------------------------------
-
-def get_predict_results_runs_old(model_ids,max_runs,METRICS_PATH,dataset_name="full_desi_dataset",clean_titles=True,print_latex=False):
-    repeat_metrics = pd.DataFrame(columns=["ACW","CW","Other","C Viol"],index=model_ids)
-    repeat_metrics.columns.name="Model"
-    for model in model_ids:
-        acws = []
-        cws = []
-        others = []
-        c_viols = []
-        for run in range(max_runs):
-            try:
-                predictions = pd.read_csv(f"{METRICS_PATH}/{model}/version_{run}/{dataset_name}_predictions.csv",header=None,names=['CW','ACW','Other'], on_bad_lines = 'skip').astype('float')
-                num = predictions.shape[0]
-                num_cw = np.count_nonzero(predictions['CW']>0.5)
-                num_acw = np.count_nonzero(predictions['ACW']>0.5)
-                num_other = num - num_acw - num_cw
-                acws.append(num_acw)
-                cws.append(num_cw)
-                others.append(num_other)
-                c_viols.append(chirality_violation(predictions))
-            except:
-                print(f"Error with {model}, run {run}")
-        
-        #HARDCODED 1 MIL GALAXIES!!!!
-        repeat_metrics.loc[model] = {"ACW": f"{np.average(acws):.0f} ({np.average(acws)/1e6:.1%}) ± {np.std(acws):.0f}",
-                                        "CW": f"{np.average(cws):.0f} ({np.average(cws)/1e6:.1%}) ± {np.std(cws):.0f}",
-                                        "Other": f"{np.average(others):.0f} ({np.average(others)/1e6:.1%}) ± {np.std(others):.0f}",
-                                        "C Viol": f"{np.average(c_viols):3.2f} ± {np.std(c_viols):3.2f}"}
-    if print_latex:
-        print(tabulate(repeat_metrics,headers='keys',tablefmt='latex'))
-    if clean_titles:
-        repeat_metrics.index = repeat_metrics.index.str.replace('_cut_dataset','')
-        repeat_metrics.index = repeat_metrics.index.str.replace('_repeat','')
     return repeat_metrics
 
 # ---------------------------------------------------------------------------------
 
 def get_predict_results_runs(model_ids,max_runs,METRICS_PATH,dataset_name="full_desi_dataset",clean_titles=True,print_latex=False,max_batch=10,errors=True):
-    repeat_metrics = pd.DataFrame(columns=["ACW","CW","Other","C Viol"],index=model_ids)
+    repeat_metrics = pd.DataFrame(columns=["ACW","CW","Other","S/Z Ratio","C Viol"],index=model_ids)
     repeat_metrics.columns.name="Model"
     for model in model_ids:
         total = 0
@@ -190,6 +156,7 @@ def get_predict_results_runs(model_ids,max_runs,METRICS_PATH,dataset_name="full_
         cws = []
         others = []
         c_viols = []
+        ratios = []
         for run in range(max_runs):
             num = 0
             num_cw = 0
@@ -210,17 +177,21 @@ def get_predict_results_runs(model_ids,max_runs,METRICS_PATH,dataset_name="full_
             others.append(num_other)
             c_viol = (num_acw-num_cw)/np.sqrt(num_cw+num_acw)
             c_viols.append(c_viol)
+            if num_acw !=0 and num_cw !=0:
+                ratios.append(num_acw/num_cw)
+            else:
+                ratios.append(0)
             total += num
         total /=max_runs
         repeat_metrics.loc[model] = {"ACW": f"{np.average(acws):.0f} ({np.average(acws)/total:.1%}) ± {np.std(acws):.0f}",
                                         "CW": f"{np.average(cws):.0f} ({np.average(cws)/total:.1%}) ± {np.std(cws):.0f}",
                                         "Other": f"{np.average(others):.0f} ({np.average(others)/total:.1%}) ± {np.std(others):.0f}",
+                                        "S/Z Ratio": f"{np.average(ratios):3.2f} ± {np.std(ratios):3.2f}",
                                         "C Viol": f"{np.average(c_viols):3.2f} ± {np.std(c_viols):3.2f}"}
     if print_latex:
         print(tabulate(repeat_metrics,headers='keys',tablefmt='latex'))
     if clean_titles:
         repeat_metrics.index = repeat_metrics.index.str.replace('_cut_dataset','')
-        repeat_metrics.index = repeat_metrics.index.str.replace('_repeat','')
     return repeat_metrics
 
 # ---------------------------------------------------------------------------------
@@ -324,4 +295,54 @@ def plot_spiral_nums(repeat_metrics,model_ids,c_viols_list):
         ax.set_xticks(c_viols_list)
         ax.set_yticks(np.arange(0.2,1.2,0.2))
     plt.tight_layout()
+    plt.show()
+
+ # ---------------------------------------------------------------------------------   
+    
+def plot_combined_metrics(model_ids,metric_to_use,metric_label,METRICS_PATH,max_runs=5,show_err=True,l_loc='lower right'):
+    fig = plt.figure(figsize=(14,6))
+    ax1 = fig.add_subplot(111)
+    ax1.set_xlabel('Epoch',fontsize=14)
+    ax1.tick_params(axis='both', which='major', labelsize=14)
+    #ax.tick_params(axis='both', which='minor', labelsize=10)
+    ax1.set_ylabel(metric_label,fontsize=14)
+
+    for i,model in enumerate(model_ids):
+        model_metrics = []
+        for run in range(max_runs):
+            run_metrics = get_metrics_from_csv(model,METRICS_PATH,version=run,mode='train')
+            run_metric_to_use = run_metrics[metric_to_use]
+            model_metrics.append(run_metric_to_use)
+        
+        epoch = run_metrics.index #Get from last run
+        avg_metrics = np.average(np.array(model_metrics),axis=0)
+        std_metrics = np.std(np.array(model_metrics),axis=0)
+        label = model.replace('_cut_dataset','').replace('g','G').replace('ce','CE').replace('lenet','LeNet').replace('resnet','ResNet')
+        ax1.plot(epoch,avg_metrics,linestyle='-',c=colours[i],label=label,linewidth=2)
+        if show_err:
+            ax1.plot(epoch,avg_metrics-std_metrics,linestyle='--',c=colours[i],linewidth=.5)
+            ax1.plot(epoch,avg_metrics+std_metrics,linestyle='--',c=colours[i],linewidth=.5)
+
+    ax1.legend(loc=l_loc,ncol=int(len(model_ids)/2),fontsize=14)
+    ax1.grid()
+    plt.show()
+
+ # ---------------------------------------------------------------------------------   
+    
+def plot_combined_metrics_run(model_ids,metric,metric_label,METRICS_PATH,version=0):
+    fig = plt.figure(figsize=(10,4))
+    ax1 = fig.add_subplot(111)
+    ax1.set_xlabel('Epoch',fontsize=14)
+    ax1.tick_params(axis='both', which='major', labelsize=14)
+    #ax.tick_params(axis='both', which='minor', labelsize=10)
+    ax1.set_ylabel(metric_label,fontsize=14)
+
+    for i,model in enumerate(model_ids):
+        metrics = get_metrics_from_csv(model,METRICS_PATH,version=version,mode='train')
+        m = metrics[metric]
+        epoch = metrics.index
+        label = model.replace('_cut_dataset','').replace('g','G').replace('ce','CE').replace('lenet','LeNet').replace('resnet','ResNet')
+        ax1.plot(epoch,m,linestyle='-',c=colours[i],label=label,linewidth=1.7)
+    ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5),fontsize=14)
+    ax1.grid()
     plt.show()
