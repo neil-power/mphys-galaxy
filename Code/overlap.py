@@ -6,11 +6,9 @@ from custom_models.G_ResNet import G_ResNet50
 from custom_models.CE_ResNet import CE_Resnet50
 from dataset_utils import *
 from enum import Enum
-
 import torch
 import torch.nn.functional as F
 from collections import OrderedDict
-
 from matplotlib.offsetbox import (OffsetImage, AnnotationBbox)
 
 def stat_dict_cut(state_dict):
@@ -37,17 +35,22 @@ DATASET = datasets.LOCAL_SUBSET #Select which dataset to train on, or if testing
 MODE = modes.PREDICT #Select which mode
 
 PATHS = dict(
-    METRICS_PATH = "/share/nas2/npower/mphys-galaxy/Metrics",
-    LOG_PATH = "/share/nas2/npower/mphys-galaxy/Code/lightning_logs",
-    FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg',
-    LOCAL_SUBSET_DATA_PATH = '/share/nas2/npower/mphys-galaxy/Data/Subset',
-    FULL_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat.csv',
-    FULL_DESI_CATALOG_PATH =  '/share/nas2/npower/mphys-galaxy/Data/desi_full_cat.parquet',
-    CUT_CATALOG_TEST_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_testing.csv',
-    CUT_CATALOG_TRAIN_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_train_val_downsample.csv',
-    BEST_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_best_subset.csv',
-    LOCAL_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_local_subset.csv',
+    LOCAL_SUBSET_DATA_PATH =  "Data/Subset",
+    LOCAL_SUBSET_CATALOG_PATH =  "Data/gz1_desi_cross_cat_local_subset.csv",
 )
+
+# PATHS = dict(
+#     METRICS_PATH = "/share/nas2/npower/mphys-galaxy/Metrics",
+#     LOG_PATH = "/share/nas2/npower/mphys-galaxy/Code/lightning_logs",
+#     FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg',
+#     LOCAL_SUBSET_DATA_PATH = '/share/nas2/npower/mphys-galaxy/Data/Subset',
+#     FULL_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat.csv',
+#     FULL_DESI_CATALOG_PATH =  '/share/nas2/npower/mphys-galaxy/Data/desi_full_cat.parquet',
+#     CUT_CATALOG_TEST_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_testing.csv',
+#     CUT_CATALOG_TRAIN_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_train_val_downsample.csv',
+#     BEST_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_best_subset.csv',
+#     LOCAL_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_local_subset.csv',
+# )
 
 def build_mask(s, margin=2, dtype=torch.float32):
     mask = torch.zeros(1, 1, s, s, dtype=dtype)
@@ -211,6 +214,7 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
         #a0.axis([0,180,0,1])
         #a0.set_xlabel("Rotation [deg]")
         a2.set_xlabel("Rotation [deg]")
+        a2.set_ylabel("Class Probability")
         #a1.axis([0,180,0,1])
         a3.axis([0,180,0,1])
         #a1.axis('off')
@@ -232,32 +236,33 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
         fig2.subplots_adjust(bottom=0.15)
 
         #pl.show()
-        fig2.savefig("../rot_err/"+str(idx)+".png")
+        fig2.savefig("rot_err/"+str(idx)+".png")
     
         pl.close()
         print("Plot generated")
     
     return np.mean(eta), np.std(eta)
 
-G_resnet= G_ResNet50(num_classes = 2, custom_predict=True, enable_dropout=True)
-CE_resnet= CE_Resnet50(enable_dropout = True)
-
-state_dict_G = torch.load('../Metrics/g_resnet50_cut_dataset_c/version_0/model.pt')
-state_dict_CE = torch.load('../Metrics/CE_resnet50_cut_dataset/version_0/model.pt')
-
-G_resnet.load_state_dict(stat_dict_cut(state_dict_G))
-CE_resnet.load_state_dict(stat_dict_cut(state_dict_CE))
-print("Models loaded")
-
 datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE=160, NUM_WORKERS=1,BATCH_SIZE=1, MAX_IMAGES=10)
 datamodule.prepare_data()
 datamodule.setup(stage='predict')
 print("Dataset primed")
 
+state_dict_G = torch.load('Metrics/g_resnet50_cut_dataset_c/version_0/model.pt')
+state_dict_CE = torch.load('Metrics/CE_resnet50_cut_dataset/version_0/model.pt')
+
+G_resnet= G_ResNet50(num_classes = 2, custom_predict=True, enable_dropout=True)
+CE_resnet= CE_Resnet50(enable_dropout = True)
+
+G_resnet.load_state_dict(stat_dict_cut(state_dict_G))
+CE_resnet.load_state_dict(stat_dict_cut(state_dict_CE))
+print("Models loaded")
+
 overlap_results = pd.DataFrame(columns=['Steerable Overlap','Steerable Err','CE Overlap','CE Err'])
 i=0
-for data1 in datamodule.predict_dataloader():
+for i in range(10):
     print("Begining assesment on image "+str(i))
+    data1 = torch.Tensor(datamodule.predict_dataset[i]).unsqueeze(0)
     av_overlap2, std_overlap2 = fr_rotation_test(CE_resnet, data=data1, idx ="resnet_CE_"+str(i), target=None, PLOT=True)
     print("Resnet run completed")
     av_overlap1, std_overlap1 = fr_rotation_test(G_resnet, data=data1, idx ="resnet_G_"+ str(i), target=None, PLOT=True)
