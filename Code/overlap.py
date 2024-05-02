@@ -1,43 +1,24 @@
-# %%
-import math
 import numpy as np
 import pylab as pl
 import pandas as pd
-from torchinfo import summary
-import torchvision.models as models
-from custom_models.G_ResNet import G_ResNet50,G_ResNet18
+from custom_models.G_ResNet import G_ResNet50
 from custom_models.CE_ResNet import CE_Resnet50
 from dataset_utils import *
 from enum import Enum
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from collections import OrderedDict
 
 from matplotlib.offsetbox import (OffsetImage, AnnotationBbox)
 
-# %%
 def stat_dict_cut(state_dict):
     new_state_dict = OrderedDict()
     for k, v in state_dict.items():
-        #name = k[6:] # remove `module.`
         name = k.replace("model.","")
         new_state_dict[name] = v
     return new_state_dict
 
-# %%
-G_resnet= G_ResNet50(num_classes = 2, custom_predict=True, enable_dropout=True)
-CE_resnet= CE_Resnet50(enable_dropout = True)
-
-# %%
-state_dict_G = torch.load('../Metrics/g_resnet50_cut_dataset_c/version_0/model.pt')
-state_dict_CE = torch.load('../Metrics/CE_resnet50_cut_dataset/version_0/model.pt')
-
-G_resnet.load_state_dict(stat_dict_cut(state_dict_G))
-CE_resnet.load_state_dict(stat_dict_cut(state_dict_CE)) #after this works, switch out for a chirality classifier
-
-# %%
 class datasets(Enum):
     FULL_DATASET = 0 #Use all 600,000 galaxies in GZ1 catalog
     CUT_DATASET = 1 #Use cut of 200,000 galaxies, with pre-selected test data and downsampled train data
@@ -51,35 +32,22 @@ class modes(Enum):
     TEST = 1 #Test an existing saved model on a dataset
     PREDICT = 2 #Use an existing saved model on an unlabelled dataset
 
-DATASET = datasets.CUT_TEST_DATASET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
+DATASET = datasets.LOCAL_SUBSET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
 MODE = modes.PREDICT #Select which mode
 
 PATHS = dict(
-    LOCAL_SUBSET_DATA_PATH =  "../Data/Subset",
-    LOCAL_SUBSET_CATALOG_PATH =  "../Data/gz1_desi_cross_cat_local_subset.csv",
+    METRICS_PATH = "/share/nas2/npower/mphys-galaxy/Metrics",
+    LOG_PATH = "/share/nas2/npower/mphys-galaxy/Code/lightning_logs",
+    FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg',
+    LOCAL_SUBSET_DATA_PATH = '/share/nas2/npower/mphys-galaxy/Data/Subset',
+    FULL_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat.csv',
+    FULL_DESI_CATALOG_PATH =  '/share/nas2/npower/mphys-galaxy/Data/desi_full_cat.parquet',
+    CUT_CATALOG_TEST_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_testing.csv',
+    CUT_CATALOG_TRAIN_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_train_val_downsample.csv',
+    BEST_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_best_subset.csv',
+    LOCAL_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_local_subset.csv',
 )
 
-# %%
-#LOCAL_SUBSET_DATA_PATH =  "../Data/Subset"
-#catalog = pd.read_csv( "../Data/gz1_desi_cross_cat_local_subset.csv")[0:1]
-#catalog["file_loc"] = get_file_paths(catalog,LOCAL_SUBSET_DATA_PATH)
-
-datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE=160, NUM_WORKERS=1,BATCH_SIZE=1, MAX_IMAGES=10)
-datamodule.prepare_data()
-datamodule.setup(stage='predict')
-#image=torch.from_numpy(datamodule.predict_dataset[0])
-
-# %%
-# subset_indices = [1] # select your indices here as a list
-# midway = datamodule.predict_dataloader()
-# subset = torch.utils.data.Subset(midway, subset_indices)
-
-# #data, target = iter(subset)
-
-# %% [markdown]
-# ## Utils funcs
-
-# %%
 def build_mask(s, margin=2, dtype=torch.float32):
     mask = torch.zeros(1, 1, s, s, dtype=dtype)
     c = (s-1) / 2
@@ -119,10 +87,6 @@ def make_linemarker(x,y,dx,col,ax):
     
     return
 
-# %% [markdown]
-# ## Overlapping
-
-# %%
 def overlapping(x, y, n, beta=0.1): # adapt for 3 classes
 
     n_z = 100 #what is the significance of 100
@@ -159,19 +123,10 @@ def overlapping(x, y, n, beta=0.1): # adapt for 3 classes
     
     eta_z = np.zeros(n_z)
     eta_temp = np.minimum(f_x, f_y)
-    eta_z = np.minimum(f_n, eta_temp)#then just two of these??
-        
-    # pl.subplot(111)
-    # pl.plot(z, f_x, label=r"$f_x$")
-    # pl.plot(z, f_y, label=r"$f_y$")
-    # pl.plot(z, eta_z, label=r"$\eta_z$")
-    # pl.legend()
-    # pl.show()
-    # print('meow')
+    eta_z = np.minimum(f_n, eta_temp)
 
     return np.sum(eta_z)*dz
 
-# %%
 def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
     #model is the model, data is one image, idx??
     T = 50#50 #number of passes
@@ -197,7 +152,7 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
         #p = F.softmax(x,dim=1)
                                          
         # run 100 stochastic forward passes:
-        #model.enable_dropout_func() #yeah we need to fix this
+        model.enable_dropout_func() #yeah we need to fix this
 
         output_list, input_list = [], []
         for i in range(T):
@@ -206,15 +161,12 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
             input_list.append(x.unsqueeze(0).cpu())
             output_list.append(torch.unsqueeze(F.softmax(x,dim=1), 0).cpu())
             x=None
+
+        print("Forward passes for one orientation completed")
                                          
-        # calculate the mean output for each target:
-        output_mean = np.squeeze(torch.cat(output_list, 0).mean(0).data.cpu().numpy())
-                                             
         # append per rotation output into list:
         outp_list.append(np.squeeze(torch.cat(output_list, 0).data.numpy()))
         inpt_list.append(np.squeeze(torch.cat(input_list, 0).data.numpy()))
-
-        #print ('rotation degree', str(r), 'Predict : {} - {}'.format(output_mean.argmax(),output_mean))
 
     preds = np.array([0,1,2])#
     classes = np.array(["Z-wise","S-wise", "None"])#
@@ -224,8 +176,6 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
     rotation_list = np.array(rotation_list)
 
     colours=["b","r","g"]#
-
-    #fig1, (a0, a1) = pl.subplots(2, 1, gridspec_kw={'height_ratios': [8,1]})
     fig2, (a2, a3) = pl.subplots(2, 1, gridspec_kw={'height_ratios': [8,1]})
 
     eta = np.zeros(len(rotation_list))
@@ -280,35 +230,38 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
         fig2.subplots_adjust(bottom=0.15)
 
         #pl.show()
-        fig2.savefig("../roterr/"+str(idx)+".png")
+        fig2.savefig("../rot_err/"+str(idx)+".png")
     
         pl.close()
+        print("Plot generated")
     
     return np.mean(eta), np.std(eta)
 
-# %% [markdown]
-# ## Run Code
+G_resnet= G_ResNet50(num_classes = 2, custom_predict=True, enable_dropout=True)
+CE_resnet= CE_Resnet50(enable_dropout = True)
 
-# %%
-# for param in test_model.parameters():
-#             param.requires_grad = False
+state_dict_G = torch.load('../Metrics/g_resnet50_cut_dataset_c/version_0/model.pt')
+state_dict_CE = torch.load('../Metrics/CE_resnet50_cut_dataset/version_0/model.pt')
 
-#     # Modify the final fully connected layer to include dropout
-# num_ftrs = test_model.fc.in_features
-# test_model.fc = nn.Sequential(
-#     nn.Dropout(0.5),  # Add dropout layer with probability 0.5
-#     nn.Linear(num_ftrs, 3)  # Change the output size to match your task
-# )
+G_resnet.load_state_dict(stat_dict_cut(state_dict_G))
+CE_resnet.load_state_dict(stat_dict_cut(state_dict_CE))
+print("Models loaded")
+
+datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE=160, NUM_WORKERS=1,BATCH_SIZE=1, MAX_IMAGES=10)
+datamodule.prepare_data()
+datamodule.setup(stage='predict')
+print("Dataset primed")
 
 overlap_results = pd.DataFrame(columns=['Steerable Overlap','Steerable Err','CE Overlap','CE Err'])
 i=0
 for data1 in datamodule.predict_dataloader():
-    print(i)
-    av_overlap1, std_overlap1 = fr_rotation_test(G_resnet, data=data1, idx ="resnet_G_"+ str(i), target=None, PLOT=True)
+    print("Begining assesment on image "+str(i))
     av_overlap2, std_overlap2 = fr_rotation_test(CE_resnet, data=data1, idx ="resnet_CE_"+str(i), target=None, PLOT=True)
+    print("Resnet run completed")
+    av_overlap1, std_overlap1 = fr_rotation_test(G_resnet, data=data1, idx ="resnet_G_"+ str(i), target=None, PLOT=True)
+    print("G_Resnet run completed")
     results =[av_overlap1,std_overlap1,av_overlap2,std_overlap2]
     overlap_results.loc[i] = results
     i+=1
 overlap_results.to_csv("Overlap Index")
-
-
+print("Results writted to CSV")
