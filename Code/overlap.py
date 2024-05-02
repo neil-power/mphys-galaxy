@@ -2,6 +2,7 @@ import numpy as np
 import pylab as pl
 import pandas as pd
 from custom_models.G_ResNet import G_ResNet50
+from custom_models.G_ResNet import G_ResNet50
 from custom_models.CE_ResNet import CE_Resnet50
 from dataset_utils import *
 from enum import Enum
@@ -152,6 +153,7 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
         #p = F.softmax(x,dim=1)
                                          
         # run 100 stochastic forward passes:
+        model.enable_dropout_func() #yeah we need to fix this
         model.enable_dropout_func() #yeah we need to fix this
 
         output_list, input_list = [], []

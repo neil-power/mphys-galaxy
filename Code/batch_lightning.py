@@ -36,7 +36,7 @@ SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_D
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #ce_resnet50,lenet,g_resnet18,g_resnet50,g_lenet,g_resnet18_old
-MODEL_NAME = "g_resnet18"
+MODEL_NAME = "g_resnet50"
 CUSTOM_ID = "c"
 
 USE_TENSORBOARD = True #Log to tensorboard as well as csv logger
@@ -51,7 +51,7 @@ RANDOM_ROTATE = True #Randomly rotate images between 0-360 degrees (training onl
 ENABLE_DROPOUT = False #Add dropout layer (g_resnet and ce-resnet models only)
 
 #HYPERPARAMS
-BATCH_SIZE = 100 #Number of images per batch, cannot be >60 for resnet50_c (takes 45GB ram)
+BATCH_SIZE = 60 #Number of images per batch, cannot be >60 for resnet50_c (takes 45GB ram)
 LEARNING_RATE = 0.0001
 MAX_EPOCHS = 120
 
