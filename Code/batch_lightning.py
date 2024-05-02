@@ -30,7 +30,7 @@ class modes(Enum):
 DATASET = datasets.CUT_DATASET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
 MODE = modes.PREDICT #Select which mode
 
-PREDICT_DATASET = datasets.FULL_DESI_DATASET #If predicting, predict this dataset
+PREDICT_DATASET = datasets.CUT_TEST_DATASET #If predicting, predict this dataset
 SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_DATASET's test dataset with only S and Z galaxies at a set chirality violation (predict only)
 
 # Models:
@@ -41,7 +41,7 @@ CUSTOM_ID = "c"
 
 USE_TENSORBOARD = True #Log to tensorboard as well as csv logger
 SAVE_MODEL = True #Save model weights to .pt file
-REPEAT_RUNS = [4] #Set to 1 for 1 run, or a list for specific runs
+REPEAT_RUNS = [0,1,2,3,4] #Set to [0] for 1 run, or a list for specific runs
 IMG_SIZE = 160 #This is the output size of the generated image array
 NUM_WORKERS = 11 #Number of workers in dataloader (usually set to no of CPU cores - 1)
 MAX_IMAGES = -1 #Max number of images to load (-1 for all)
@@ -127,8 +127,6 @@ for run in REPEAT_RUNS:
         default_root_dir=f"{PATHS['LOG_PATH']}/{MODEL_ID}",
         enable_checkpointing=False,
     )
-
-    #compiled_model = torch.compile(model, backend="eager")
     
     if MODE==modes.TRAIN:
         trainer.fit(model,train_dataloaders=datamodule.train_dataloader(),val_dataloaders=datamodule.val_dataloader())

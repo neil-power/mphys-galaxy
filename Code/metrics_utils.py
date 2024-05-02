@@ -159,7 +159,7 @@ def get_predict_results_runs_old(model_ids,max_runs,METRICS_PATH,dataset_name="f
                 num = predictions.shape[0]
                 num_cw = np.count_nonzero(predictions['CW']>0.5)
                 num_acw = np.count_nonzero(predictions['ACW']>0.5)
-                num_other = num - num_acw - num_acw
+                num_other = num - num_acw - num_cw
                 acws.append(num_acw)
                 cws.append(num_cw)
                 others.append(num_other)
@@ -201,7 +201,7 @@ def get_predict_results_runs(model_ids,max_runs,METRICS_PATH,dataset_name="full_
                     num += predictions.shape[0]
                     num_cw += np.count_nonzero(predictions['CW']>0.5)
                     num_acw += np.count_nonzero(predictions['ACW']>0.5)
-                    num_other += predictions.shape[0] - num_acw - num_acw
+                    num_other += predictions.shape[0] - np.count_nonzero(predictions['ACW']>0.5) - np.count_nonzero(predictions['CW']>0.5)
                 except:
                     if errors:
                         print(f"Error with {model}, run {run}, batch {batch}")
