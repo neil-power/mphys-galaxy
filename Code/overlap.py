@@ -130,7 +130,7 @@ def overlapping(x, y, n, beta=0.1): # adapt for 3 classes
 
 def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
     #model is the model, data is one image, idx??
-    T = 50#50 #number of passes
+    T = 10#50 #number of passes
     rotation_list = range(0, 180, 20)
     #print("True classification: ",target[0].item())
     
