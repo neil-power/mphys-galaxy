@@ -36,17 +36,17 @@ SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_D
 # Models:
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #ce_resnet50,lenet,g_resnet18,g_resnet50,g_lenet,g_resnet18_old
-MODEL_NAME = "g_resnet50"
-CUSTOM_ID = ""
+MODEL_NAME = "g_resnet18"
+CUSTOM_ID = "c"
 
 USE_TENSORBOARD = True #Log to tensorboard as well as csv logger
 SAVE_MODEL = True #Save model weights to .pt file
-REPEAT_RUNS = [3,4] #Set to 1 for 1 run, or a list for specific runs
+REPEAT_RUNS = [4] #Set to 1 for 1 run, or a list for specific runs
 IMG_SIZE = 160 #This is the output size of the generated image array
 NUM_WORKERS = 11 #Number of workers in dataloader (usually set to no of CPU cores - 1)
 MAX_IMAGES = -1 #Max number of images to load (-1 for all)
 FLIP_EQUIVARIANCE = False #Enable flip-equivariance (g_resnet models only)
-CUSTOM_PREDICT = False #Use Jia et al (2023) flipped predict function (g_resnet models only)
+CUSTOM_PREDICT = True #Use Jia et al (2023) flipped predict function (g_resnet models only)
 RANDOM_ROTATE = True #Randomly rotate images between 0-360 degrees (training only)
 ENABLE_DROPOUT = False #Add dropout layer (g_resnet and ce-resnet models only)
 
@@ -148,7 +148,7 @@ for run in REPEAT_RUNS:
             total_predict_batches = min(10, dataloader_len)
             subset_size = dataloader_len // total_predict_batches
             for i in range(total_predict_batches):
-                print(f"Loading predict batch {i} (size {subset_size} of {total_predict_batches} (size {dataloader_len})")
+                print(f"Loading predict batch {i} (size {subset_size}) of {total_predict_batches} (size {dataloader_len})")
                 start_idx = i * subset_size
                 end_idx = min((i + 1) * subset_size, dataloader_len)
 
