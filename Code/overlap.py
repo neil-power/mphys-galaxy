@@ -34,6 +34,9 @@ class modes(Enum):
 DATASET = datasets.LOCAL_SUBSET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
 MODE = modes.PREDICT #Select which mode
 
+graph_mode = True
+MAX_IMG = 10
+
 PATHS = dict(
     LOCAL_SUBSET_DATA_PATH =  "Data/Subset",
     LOCAL_SUBSET_CATALOG_PATH =  "Data/gz1_desi_cross_cat_local_subset.csv",
@@ -167,7 +170,7 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
             output_list.append(torch.unsqueeze(F.softmax(x,dim=1), 0).cpu())
             x=None
 
-        print("Forward passes for one orientation completed")
+        #print("Forward passes for one orientation completed")
                                          
         # append per rotation output into list:
         outp_list.append(np.squeeze(torch.cat(output_list, 0).data.numpy()))
@@ -243,7 +246,7 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
     
     return np.mean(eta), np.std(eta)
 
-datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE=160, NUM_WORKERS=1,BATCH_SIZE=1, MAX_IMAGES=10)
+datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE=160, NUM_WORKERS=1,BATCH_SIZE=1, MAX_IMAGES=MAX_IMG)
 datamodule.prepare_data()
 datamodule.setup(stage='predict')
 print("Dataset primed")
@@ -260,15 +263,15 @@ print("Models loaded")
 
 overlap_results = pd.DataFrame(columns=['Steerable Overlap','Steerable Err','CE Overlap','CE Err'])
 i=0
-for i in range(10):
+for i in range(MAX_IMG):
     print("Begining assesment on image "+str(i))
     data1 = torch.Tensor(datamodule.predict_dataset[i]).unsqueeze(0)
-    av_overlap2, std_overlap2 = fr_rotation_test(CE_resnet, data=data1, idx ="resnet_CE_"+str(i), target=None, PLOT=True)
+    av_overlap2, std_overlap2 = fr_rotation_test(CE_resnet, data=data1, idx = "img_" + str(i) +"_resnet_CE", target=None, PLOT=graph_mode)
     print("Resnet run completed")
-    av_overlap1, std_overlap1 = fr_rotation_test(G_resnet, data=data1, idx ="resnet_G_"+ str(i), target=None, PLOT=True)
+    av_overlap1, std_overlap1 = fr_rotation_test(G_resnet, data=data1, idx = "img_" + str(i)+"_resnet_G", target=None, PLOT=graph_mode)
     print("G_Resnet run completed")
     results =[av_overlap1,std_overlap1,av_overlap2,std_overlap2]
     overlap_results.loc[i] = results
     i+=1
-overlap_results.to_csv("Overlap Index")
+overlap_results.to_csv("rot_err/overlap_index")
 print("Results writted to CSV")
