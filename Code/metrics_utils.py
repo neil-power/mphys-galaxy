@@ -14,15 +14,15 @@ colours = ["#0072B2","#E69F00","#CC79A7",       "#56B4E9",  "#009E73",  "#D55E00
 
 # ---------------------------------------------------------------------------------
 
-def save_metrics_from_logger(model_id,log_path,metrics_path,version=0,mode='train',save=True):
-    metrics = pd.read_csv(f"{log_path}/{model_id}/version_{version}_{mode}/metrics.csv")
+def save_metrics_from_logger(model_id,log_path,metrics_path,version=0,mode='train',custom_save_id='',save=True):
+    metrics = pd.read_csv(f"{log_path}/{model_id}/version_{version}_{mode}{custom_save_id}/metrics.csv")
     if mode == 'train':
         metrics = metrics.drop(['train_loss_step',	'train_acc_step',	'train_calibration_error_step'],axis=1)
     metrics = metrics.groupby(metrics['epoch']).first()
     if save:
         save_dir = f"{metrics_path}/{model_id}/version_{version}"
         create_folder(save_dir)
-        metrics.to_csv(f"{save_dir}/{mode}_metrics.csv")
+        metrics.to_csv(f"{save_dir}/{mode}{custom_save_id}_metrics.csv")
     return metrics
 
 # ---------------------------------------------------------------------------------

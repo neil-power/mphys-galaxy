@@ -28,9 +28,9 @@ class modes(Enum):
     PREDICT = 2 #Use an existing saved model on an labelled/unlabelled dataset
 
 DATASET = datasets.CUT_DATASET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
-MODE = modes.PREDICT #Select which mode
+MODE = modes.TEST #Select which mode
 
-PREDICT_DATASET = datasets.CUT_TEST_DATASET #If predicting, predict this dataset
+PREDICT_DATASET = datasets.FULL_DESI_DATASET #If predicting, predict this dataset
 SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_DATASET's test dataset with only S and Z galaxies at a set chirality violation (predict only)
 
 # Models:
@@ -38,10 +38,11 @@ SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_D
 #ce_resnet50,lenet,g_resnet18,g_resnet50,g_lenet,g_resnet18_old
 MODEL_NAME = "g_resnet50"
 CUSTOM_ID = "c"
+CUSTOM_SAVE_ID = "_dropout" #This needs an _ if not ""
 
 USE_TENSORBOARD = True #Log to tensorboard as well as csv logger
 SAVE_MODEL = True #Save model weights to .pt file
-REPEAT_RUNS = [0,1,2,3,4] #Set to [0] for 1 run, or a list for specific runs
+REPEAT_RUNS = [1] #Set to [0] for 1 run, or a list for specific runs
 IMG_SIZE = 160 #This is the output size of the generated image array
 NUM_WORKERS = 11 #Number of workers in dataloader (usually set to no of CPU cores - 1)
 MAX_IMAGES = -1 #Max number of images to load (-1 for all)
@@ -111,14 +112,14 @@ for run in REPEAT_RUNS:
         step_size=5,
         gamma=0.85,
         weights=(MODEL_PATH if MODE != modes.TRAIN else None),
-        graph_save_path=(f"{save_dir}/val_matrix.png" if MODE == modes.TRAIN else f"{save_dir}/{MODE.name.lower()}_matrix.png"),
+        graph_save_path=(f"{save_dir}/val_matrix.png" if MODE == modes.TRAIN else f"{save_dir}/{MODE.name.lower()}{CUSTOM_SAVE_ID}_matrix.png"),
         flip_eq=FLIP_EQUIVARIANCE,
         custom_predict = CUSTOM_PREDICT,
         enable_dropout = ENABLE_DROPOUT
     )
 
-    tb_logger = TensorBoardLogger(PATHS["LOG_PATH"], name=MODEL_ID,version=f"version_{run}_{MODE.name.lower()}")
-    csv_logger = CSVLogger(PATHS["LOG_PATH"],name=MODEL_ID,version=f"version_{run}_{MODE.name.lower()}")
+    tb_logger = TensorBoardLogger(PATHS["LOG_PATH"], name=MODEL_ID,version=f"version_{run}_{MODE.name.lower()}{CUSTOM_SAVE_ID}")
+    csv_logger = CSVLogger(PATHS["LOG_PATH"],name=MODEL_ID,version=f"version_{run}_{MODE.name.lower()}{CUSTOM_SAVE_ID}")
     trainer = pl.Trainer(
         accelerator=("gpu" if device.type=="cuda" else "cpu"),
         max_epochs=MAX_EPOCHS,
@@ -156,7 +157,7 @@ for run in REPEAT_RUNS:
                 subset_loader.prepare_data()
                 subset_loader.setup(stage='predict')
                 predictions = trainer.predict(model,dataloaders=subset_loader.predict_dataloader())
-                predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_{i}_predictions.csv"
+                predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_{i}{CUSTOM_SAVE_ID}_predictions.csv"
                 if os.path.exists(predict_save_path):
                     os.remove(predict_save_path)
                 # ordered by batches
@@ -165,9 +166,9 @@ for run in REPEAT_RUNS:
                     batch.to_csv(predict_save_path,mode='a', index=False, header=False)
         else: 
             if SET_CHIRALITY is not None:
-                predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_CVIOL_{SET_CHIRALITY}_predictions.csv"
+                predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_CVIOL_{SET_CHIRALITY}{CUSTOM_SAVE_ID}_predictions.csv"
             else:
-                predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}_predictions.csv"
+                predict_save_path = f"{save_dir}/{PREDICT_DATASET.name.lower()}{CUSTOM_SAVE_ID}_predictions.csv"
             if os.path.exists(predict_save_path):
                 os.remove(predict_save_path)
             predictions = trainer.predict(model,dataloaders=datamodule.predict_dataloader())
