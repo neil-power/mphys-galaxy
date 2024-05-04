@@ -27,14 +27,14 @@ def save_metrics_from_logger(model_id,log_path,metrics_path,version=0,mode='trai
 
 # ---------------------------------------------------------------------------------
 
-def get_metrics_from_csv(model_id,metrics_path,version=0,mode='train'):
-    metrics = pd.read_csv(f"{metrics_path}/{model_id}/version_{version}/{mode}_metrics.csv")
+def get_metrics_from_csv(model_id,metrics_path,version=0,custom_save_id='',mode='train'):
+    metrics = pd.read_csv(f"{metrics_path}/{model_id}/version_{version}/{mode}{custom_save_id}_metrics.csv")
     return metrics
 
 # ---------------------------------------------------------------------------------
 
-def plot_train_metrics(model_id,metrics_path,version=0,show=False,save=True):
-    metrics = get_metrics_from_csv(model_id,metrics_path,version,mode='train')
+def plot_train_metrics(model_id,metrics_path,version=0,show=False,custom_save_id='',save=True):
+    metrics = get_metrics_from_csv(model_id,metrics_path,version,mode='train',custom_save_id=custom_save_id)
     train_loss = metrics['train_loss_epoch']
     train_acc = metrics['train_acc_epoch']
     val_loss = metrics['val_loss']
@@ -101,7 +101,7 @@ def save_metrics_from_tensorboard_paths(input_path,output_path):
 
 # ---------------------------------------------------------------------------------
     
-def get_results_runs(model_ids,mode,METRICS_PATH,max_runs=5,clean_titles=True,print_latex=False):
+def get_results_runs(model_ids,mode,METRICS_PATH,max_runs=5,clean_titles=True,print_latex=False,drop_extras=True):
     repeat_metrics = pd.DataFrame(columns=["Loss","Accuracy","ECE","C Viol"],index=model_ids)
     repeat_metrics.columns.name="Model"
     for model in model_ids:
@@ -139,6 +139,8 @@ def get_results_runs(model_ids,mode,METRICS_PATH,max_runs=5,clean_titles=True,pr
                                         "Accuracy": f"{(np.average(best_accs) if len(best_accs)>0 else 0):.2%} ± {(np.std(best_accs) if len(best_accs)>0 else 0):.2%}",
                                         "ECE": f"{(np.average(best_eces) if len(best_eces)>0 else 0):.4f} ± {(np.std(best_eces) if len(best_eces)>0 else 0):.4f}",
                                         "C Viol": f"{(np.average(best_chiralities) if len(best_chiralities)>0 else 0):.4f} ± {(np.std(best_chiralities) if len(best_chiralities)>0 else 0):.4f}"}
+    if drop_extras:
+        repeat_metrics = repeat_metrics.drop(['ECE','C Viol'],axis=1)
     if print_latex:
         print(tabulate(repeat_metrics,headers='keys',tablefmt='latex'))
     if clean_titles:
@@ -320,8 +322,8 @@ def plot_combined_metrics(model_ids,metric_to_use,metric_label,METRICS_PATH,max_
         label = model.replace('_cut_dataset','').replace('g','G').replace('ce','CE').replace('lenet','LeNet').replace('resnet','ResNet')
         ax1.plot(epoch,avg_metrics,linestyle='-',c=colours[i],label=label,linewidth=2)
         if show_err:
-            ax1.plot(epoch,avg_metrics-std_metrics,linestyle='--',c=colours[i],linewidth=.5)
-            ax1.plot(epoch,avg_metrics+std_metrics,linestyle='--',c=colours[i],linewidth=.5)
+            ax1.plot(epoch,avg_metrics-std_metrics,linestyle='--',c=colours[i],linewidth=.6)
+            ax1.plot(epoch,avg_metrics+std_metrics,linestyle='--',c=colours[i],linewidth=.6)
 
     ax1.legend(loc=l_loc,ncol=int(len(model_ids)/2),fontsize=14)
     ax1.grid()
