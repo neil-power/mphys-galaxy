@@ -31,11 +31,12 @@ class modes(Enum):
     TEST = 1 #Test an existing saved model on a dataset
     PREDICT = 2 #Use an existing saved model on an unlabelled dataset
 
-DATASET = datasets.LOCAL_SUBSET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
+DATASET = datasets.CUT_TEST_DATASET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
 MODE = modes.PREDICT #Select which mode
 
-graph_mode = True
-MAX_IMG = 10
+graph_mode = False
+MIN_IMG = 0
+MAX_IMG = -1
 
 # PATHS = dict(
 #     LOCAL_SUBSET_DATA_PATH =  "Data/Subset",
@@ -251,7 +252,7 @@ datamodule.setup(stage='predict')
 print("Dataset primed")
 
 state_dict_G = torch.load('Metrics/g_resnet50_cut_dataset_c/version_0/model.pt')
-state_dict_CE = torch.load('Metrics/CE_resnet50_cut_dataset/version_0/model.pt')
+state_dict_CE = torch.load('Metrics/ce_resnet50_cut_dataset/version_0/model.pt')
 
 G_resnet= G_ResNet50(num_classes = 2, custom_predict=True, enable_dropout=True)
 CE_resnet= CE_Resnet50(enable_dropout = True)
@@ -263,7 +264,7 @@ print("Models loaded")
 steerable_overlap = pd.DataFrame(columns=['softmax prob','Overlap','Err'])
 CE_overlap = pd.DataFrame(columns=['softmax prob','Overlap','Err'])
 i=0
-for i in range(MAX_IMG):
+for i in range(len(datamodule.predict_dataloader())):
     print("Begining assesment on image "+str(i))
     data1 = torch.Tensor(datamodule.predict_dataset[i]).unsqueeze(0)
 
@@ -284,6 +285,6 @@ for i in range(MAX_IMG):
 if graph_mode:
     print("Finished generating images")
 else:
-    CE_overlap.to_csv("rot_err/CE_overlap_index")
-    steerable_overlap.to_csv("rot_err/G_overlap_index")
+    CE_overlap.to_csv("rot_err/CE_overlap_index.csv",index=False)
+    steerable_overlap.to_csv("rot_err/G_overlap_index.csv",index=False)
     print("Results writted to CSV")
