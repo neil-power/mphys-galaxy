@@ -348,3 +348,75 @@ def plot_combined_metrics_run(model_ids,metric,metric_label,METRICS_PATH,version
     ax1.legend(loc='center left', bbox_to_anchor=(1, 0.5),fontsize=14)
     ax1.grid()
     plt.show()
+
+ # ---------------------------------------------------------------------------------  
+
+def eval_overlap():
+
+    path1 = "../rot_err/CE_overlap_index"
+    path2 = "../rot_err/G_overlap_index"
+
+    actual_labels = ['P_CW','P_ACW','P_OTHER']
+
+    targ1 = pd.read_csv('../Data/gz1_desi_cross_cat_testing.csv', on_bad_lines = 'skip',dtype="str")[actual_labels]
+    
+    df1 = pd.read_csv(path1)
+    df2 = pd.read_csv(path2)
+
+    #targ1 = df1['target'].values #read some csv for target
+    p1    = df1['softmax prob'].values
+    olap1 = df1['Overlap'].values
+    slap1 = df1['overlap variance'].values
+
+    #targ2 = df2['target'].values
+    p2    = df2['softmax prob'].values
+    olap2 = df2['Overlap'].values
+    slap2 = df2['overlap variance'].values
+    
+    p1 = [np.array(p1[i].lstrip('[').rstrip(']').split(), dtype=float) for i in range(len(targ1))]
+    p2 = [np.array(p2[i].lstrip('[').rstrip(']').split(), dtype=float) for i in range(len(targ1))]
+    
+    p1 = np.array(p1)
+    p2 = np.array(p2)
+    
+    diff = olap1 - olap2
+
+    for i in range(len(targ1)):
+        print("{} {} {} {} {:.2f} {:.2f} {:.2f} {:.2f}".format(i,targ1[i],np.argmax(p1[i,:]),np.argmax(p2[i,:]),olap1[i],olap2[i],slap1[i],slap2[i]))
+
+    better = diff[np.where(diff>0.01)]
+    better_class = targ1[np.where(diff>0.01)]
+    
+    worse = diff[np.where(diff<-0.01)]
+    worse_class = targ1[np.where(diff<-0.01)]
+    
+    print("Improved: ",len(better),np.mean(better),np.mean(better_class))
+    print("Worse: ",len(worse),np.mean(worse),np.mean(worse_class))
+    
+    print("Better:")
+    for i in range(len(targ1)):
+        if diff[i]>0.01:
+            print(i, targ1[i], diff[i])
+            
+    print("Worse:")
+    for i in range(len(targ1)):
+        if diff[i]<-0.01:
+            print(i, targ1[i], diff[i])
+    
+    print("Low D16:")
+    n=0
+    for i in range(len(targ1)):
+        if olap2[i]<=0.01:
+            #print(i, targ2[i], olap2[i])
+            n+=1
+    print(n)
+   
+    print("Low e:")
+    n=0
+    for i in range(len(targ1)):
+        if olap1[i]<=0.01:
+            #print(i, targ1[i], olap1[i])
+            n+=1
+    print(n)
+    
+    return
