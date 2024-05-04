@@ -37,23 +37,23 @@ MODE = modes.PREDICT #Select which mode
 graph_mode = True
 MAX_IMG = 10
 
-PATHS = dict(
-    LOCAL_SUBSET_DATA_PATH =  "Data/Subset",
-    LOCAL_SUBSET_CATALOG_PATH =  "Data/gz1_desi_cross_cat_local_subset.csv",
-)
-
 # PATHS = dict(
-#     METRICS_PATH = "/share/nas2/npower/mphys-galaxy/Metrics",
-#     LOG_PATH = "/share/nas2/npower/mphys-galaxy/Code/lightning_logs",
-#     FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg',
-#     LOCAL_SUBSET_DATA_PATH = '/share/nas2/npower/mphys-galaxy/Data/Subset',
-#     FULL_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat.csv',
-#     FULL_DESI_CATALOG_PATH =  '/share/nas2/npower/mphys-galaxy/Data/desi_full_cat.parquet',
-#     CUT_CATALOG_TEST_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_testing.csv',
-#     CUT_CATALOG_TRAIN_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_train_val_downsample.csv',
-#     BEST_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_best_subset.csv',
-#     LOCAL_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_local_subset.csv',
+#     LOCAL_SUBSET_DATA_PATH =  "Data/Subset",
+#     LOCAL_SUBSET_CATALOG_PATH =  "Data/gz1_desi_cross_cat_local_subset.csv",
 # )
+
+PATHS = dict(
+    METRICS_PATH = "/share/nas2/npower/mphys-galaxy/Metrics",
+    LOG_PATH = "/share/nas2/npower/mphys-galaxy/Code/lightning_logs",
+    FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg',
+    LOCAL_SUBSET_DATA_PATH = '/share/nas2/npower/mphys-galaxy/Data/Subset',
+    FULL_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat.csv',
+    FULL_DESI_CATALOG_PATH =  '/share/nas2/npower/mphys-galaxy/Data/desi_full_cat.parquet',
+    CUT_CATALOG_TEST_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_testing.csv',
+    CUT_CATALOG_TRAIN_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_train_val_downsample.csv',
+    BEST_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_best_subset.csv',
+    LOCAL_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_local_subset.csv',
+)
 
 def build_mask(s, margin=2, dtype=torch.float32):
     mask = torch.zeros(1, 1, s, s, dtype=dtype)
@@ -159,7 +159,6 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
         #p = F.softmax(x,dim=1)
                                          
         # run 100 stochastic forward passes:
-        model.enable_dropout_func() #yeah we need to fix this
         model.enable_dropout_func() #yeah we need to fix this
 
         output_list, input_list = [], []
