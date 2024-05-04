@@ -1,0 +1,2 @@
+epoch,test_loss,test_acc,test_calibration_error,test_chirality_violation,step
+0,0.3750951290130615,0.9516963958740234,0.1243241801857948,0.0498313046991825,0

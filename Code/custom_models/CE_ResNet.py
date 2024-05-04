@@ -33,6 +33,8 @@ class CE_Resnet(models.resnet.ResNet):
         self.enable_dropout = enable_dropout
         self.drop  = nn.Dropout(p=0.5)
 
+
+
     def _make_fc(self, in_features: int, out_features: int, add_fc: Optional[List[int]]):
         if add_fc is None:
             return nn.Linear(in_features, out_features)
@@ -84,7 +86,9 @@ class CE_Resnet(models.resnet.ResNet):
         return torch.cat((a[..., 0:1], a_i[..., 0:1], 0.5 * (a[..., 1:2] + a_i[..., 1:2])), dim=-1)
 
     def __call__(self, *args, **kwargs):
-         return self.predict(*args, **kwargs)
+        if self.enable_dropout:
+            self.enable_dropout_func()
+        return self.predict(*args, **kwargs)
 
 
 def CE_Resnet50(**kwargs: Any) -> CE_Resnet:
