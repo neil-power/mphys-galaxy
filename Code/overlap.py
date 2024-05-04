@@ -31,30 +31,31 @@ class modes(Enum):
     TEST = 1 #Test an existing saved model on a dataset
     PREDICT = 2 #Use an existing saved model on an unlabelled dataset
 
-DATASET = datasets.CUT_TEST_DATASET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
+DATASET = datasets.LOCAL_SUBSET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
 MODE = modes.PREDICT #Select which mode
 
 graph_mode = False
+MULTI = True
 MIN_IMG = 0
-MAX_IMG = -1
-
-# PATHS = dict(
-#     LOCAL_SUBSET_DATA_PATH =  "Data/Subset",
-#     LOCAL_SUBSET_CATALOG_PATH =  "Data/gz1_desi_cross_cat_local_subset.csv",
-# )
+MAX_IMG = 3
 
 PATHS = dict(
-    METRICS_PATH = "/share/nas2/npower/mphys-galaxy/Metrics",
-    LOG_PATH = "/share/nas2/npower/mphys-galaxy/Code/lightning_logs",
-    FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg',
-    LOCAL_SUBSET_DATA_PATH = '/share/nas2/npower/mphys-galaxy/Data/Subset',
-    FULL_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat.csv',
-    FULL_DESI_CATALOG_PATH =  '/share/nas2/npower/mphys-galaxy/Data/desi_full_cat.parquet',
-    CUT_CATALOG_TEST_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_testing.csv',
-    CUT_CATALOG_TRAIN_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_train_val_downsample.csv',
-    BEST_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_best_subset.csv',
-    LOCAL_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_local_subset.csv',
+    LOCAL_SUBSET_DATA_PATH =  "Data/Subset",
+    LOCAL_SUBSET_CATALOG_PATH =  "Data/gz1_desi_cross_cat_local_subset.csv",
 )
+
+# PATHS = dict(
+#     METRICS_PATH = "/share/nas2/npower/mphys-galaxy/Metrics",
+#     LOG_PATH = "/share/nas2/npower/mphys-galaxy/Code/lightning_logs",
+#     FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg',
+#     LOCAL_SUBSET_DATA_PATH = '/share/nas2/npower/mphys-galaxy/Data/Subset',
+#     FULL_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat.csv',
+#     FULL_DESI_CATALOG_PATH =  '/share/nas2/npower/mphys-galaxy/Data/desi_full_cat.parquet',
+#     CUT_CATALOG_TEST_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_testing.csv',
+#     CUT_CATALOG_TRAIN_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_train_val_downsample.csv',
+#     BEST_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_best_subset.csv',
+#     LOCAL_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_local_subset.csv',
+# )
 
 def build_mask(s, margin=2, dtype=torch.float32):
     mask = torch.zeros(1, 1, s, s, dtype=dtype)
@@ -95,7 +96,7 @@ def make_linemarker(x,y,dx,col,ax):
     
     return
 
-def overlapping(x, y, n, beta=0.1): # adapt for 3 classes
+def overlapping(x, y, n=None, beta=0.1): # adapt for 3 classes
 
     n_z = 100 #what is the significance of 100
     z = np.linspace(0,1,n_z)
@@ -119,20 +120,19 @@ def overlapping(x, y, n, beta=0.1): # adapt for 3 classes
             
         f_y[i] /= n_y
 
-
-    n_n = len(n) #third class like this?
-    f_n = np.zeros(n_z)
-    for i in range(n_z):
-        for j in range(n_n):
-            f_n[i] += norm*np.exp(-0.5*(z[i] - n[j])**2/beta**2)
-            
-        f_n[i] /= n_n
-    
-    
     eta_z = np.zeros(n_z)
-    eta_temp = np.minimum(f_x, f_y)
-    eta_z = np.minimum(f_n, eta_temp)
-
+    if n is not None:
+        n_n = len(n)
+        f_n = np.zeros(n_z)
+        for i in range(n_z):
+            for j in range(n_n):
+                f_n[i] += norm*np.exp(-0.5*(z[i] - n[j])**2/beta**2)
+                
+            f_n[i] /= n_n
+        eta_temp = np.minimum(f_x, f_y)
+        eta_z = np.minimum(f_n, eta_temp)
+    else:
+        eta_z = np.minimum(f_x, f_y)
     return np.sum(eta_z)*dz
 
 def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
@@ -186,19 +186,31 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
     colours=["b","r","g"]#
     fig2, (a2, a3) = pl.subplots(2, 1, gridspec_kw={'height_ratios': [8,1]})
 
-    eta = np.zeros(len(rotation_list))
+    
     for i in range(len(rotation_list)):
         x = outp_list[i,:,0]
         y = outp_list[i,:,1]#changed to pick which class overlap to plot
         n = outp_list[i,:,2]
-        eta[i] = overlapping(x, y, n)
+        if MULTI:
+            eta = np.zeros((len(rotation_list),3))
+            eta_sz =overlapping(x, y)
+            eta_zn =overlapping(x, n)
+            eta_sn =overlapping(y, n)
+            eta[i] =[eta_sz,eta_zn,eta_sn]
+        else:
+            eta = np.zeros(len(rotation_list))
+            eta[i] = overlapping(x, y, n)
 
     if PLOT:
         #a0.set_title("Input")
-        if np.mean(eta)>=0.01:
-            a2.set_title(r"$\langle \eta \rangle = $ {:.2f}".format(np.mean(eta)))
+        if MULTI:
+            a2.set_title(r"$\langle \eta SZ \rangle = $ {:.2f}    $\langle \eta ZN \rangle = $ {:.2f}   $\langle \eta SZ \rangle = $ {:.2f}"
+                         .format(np.mean(eta[:,0]),np.mean(eta[:,1]),np.mean(eta[:,2]))) #add underscores and less than 0.01 check
         else:
-            a2.set_title(r"$\langle \eta \rangle < 0.01$")
+            if np.mean(eta)>=0.01:
+                a2.set_title(r"$\langle \eta \rangle = $ {:.2f}".format(np.mean(eta)))
+            else:
+                a2.set_title(r"$\langle \eta \rangle < 0.01$")
 
         dx = 0.8*(rotation_list[1]-rotation_list[0])
         for pred in preds:
@@ -239,12 +251,18 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
         fig2.subplots_adjust(bottom=0.15)
 
         #pl.show()
-        fig2.savefig("rot_err/"+str(idx)+".png")
+        if MULTI:
+            fig2.savefig("rot_err/multi/"+str(idx)+".png")
+        else:
+            fig2.savefig("rot_err/"+str(idx)+".png")
     
         pl.close()
         print("Plot generated")
     
-    return np.mean(eta), np.std(eta)
+    if MULTI:
+        return np.mean(eta,axis=0), np.std(eta,axis=0)
+    else:
+        return np.mean(eta), np.std(eta)
 
 datamodule = generate_datamodule(DATASET,MODE,PATHS,datasets,modes,IMG_SIZE=160, NUM_WORKERS=1,BATCH_SIZE=1, MAX_IMAGES=MAX_IMG)
 datamodule.prepare_data()
@@ -285,6 +303,10 @@ for i in range(len(datamodule.predict_dataloader())):
 if graph_mode:
     print("Finished generating images")
 else:
-    CE_overlap.to_csv("rot_err/CE_overlap_index.csv",index=False)
-    steerable_overlap.to_csv("rot_err/G_overlap_index.csv",index=False)
+    if MULTI:
+        CE_overlap.to_csv("rot_err/multi/CE_overlap_index.csv",index=False)
+        steerable_overlap.to_csv("rot_err/multi/G_overlap_index.csv",index=False)
+    else:
+        CE_overlap.to_csv("rot_err/CE_overlap_index.csv",index=False)
+        steerable_overlap.to_csv("rot_err/G_overlap_index.csv",index=False)
     print("Results writted to CSV")
