@@ -101,7 +101,7 @@ def save_metrics_from_tensorboard_paths(input_path,output_path):
 
 # ---------------------------------------------------------------------------------
     
-def get_results_runs(model_ids,mode,METRICS_PATH,max_runs=5,clean_titles=True,print_latex=False,drop_extras=True):
+def get_results_runs(model_ids,mode,METRICS_PATH,max_runs=5,clean_titles=True,print_latex=False,drop_extras=True,custom_save_id=''):
     repeat_metrics = pd.DataFrame(columns=["Loss","Accuracy","ECE","C Viol"],index=model_ids)
     repeat_metrics.columns.name="Model"
     for model in model_ids:
@@ -112,14 +112,14 @@ def get_results_runs(model_ids,mode,METRICS_PATH,max_runs=5,clean_titles=True,pr
         for run in range(max_runs):
             try:
                 if mode =='val':
-                    metrics = get_metrics_from_csv(model,METRICS_PATH,version=run,mode='train')
+                    metrics = get_metrics_from_csv(model,METRICS_PATH,version=run,mode='train',custom_save_id=custom_save_id)
                     best_loss_epoch = metrics['val_loss'].argmin()
                     best_losses.append(metrics['val_loss'][best_loss_epoch])
                     best_accs.append(metrics['val_acc'][best_loss_epoch])
                     best_eces.append(metrics['val_calibration_error'][best_loss_epoch])
                     best_chiralities.append((metrics[f'{mode}_chirality_violation'][best_loss_epoch]))
                 elif mode =='test':
-                    metrics = get_metrics_from_csv(model,METRICS_PATH,version=run,mode=mode)
+                    metrics = get_metrics_from_csv(model,METRICS_PATH,version=run,mode=mode,custom_save_id=custom_save_id)
                     best_losses.append(metrics['test_loss'])
                     best_accs.append(metrics['test_acc'])
                     best_eces.append(metrics['test_calibration_error'])
@@ -146,6 +146,7 @@ def get_results_runs(model_ids,mode,METRICS_PATH,max_runs=5,clean_titles=True,pr
     if clean_titles:
         repeat_metrics.index = repeat_metrics.index.str.replace('_cut_dataset','')
     return repeat_metrics
+
 
 # ---------------------------------------------------------------------------------
 
