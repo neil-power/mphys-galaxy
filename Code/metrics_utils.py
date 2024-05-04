@@ -358,7 +358,7 @@ def eval_overlap():
 
     actual_labels = ['P_CW','P_ACW','P_OTHER']
 
-    targ1 = pd.read_csv('../Data/gz1_desi_cross_cat_testing.csv', on_bad_lines = 'skip',dtype="str")[actual_labels]
+    targ1 = pd.read_csv('../Data/gz1_desi_cross_cat_testing.csv', on_bad_lines = 'skip',dtype="str")[actual_labels].values #hope this is right type
     
     df1 = pd.read_csv(path1)
     df2 = pd.read_csv(path2)
@@ -366,12 +366,12 @@ def eval_overlap():
     #targ1 = df1['target'].values #read some csv for target
     p1    = df1['softmax prob'].values
     olap1 = df1['Overlap'].values
-    slap1 = df1['overlap variance'].values
+    slap1 = df1['Err'].values
 
     #targ2 = df2['target'].values
     p2    = df2['softmax prob'].values
     olap2 = df2['Overlap'].values
-    slap2 = df2['overlap variance'].values
+    slap2 = df2['Err'].values
     
     p1 = [np.array(p1[i].lstrip('[').rstrip(']').split(), dtype=float) for i in range(len(targ1))]
     p2 = [np.array(p2[i].lstrip('[').rstrip(']').split(), dtype=float) for i in range(len(targ1))]
