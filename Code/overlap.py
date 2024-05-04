@@ -260,17 +260,30 @@ G_resnet.load_state_dict(stat_dict_cut(state_dict_G))
 CE_resnet.load_state_dict(stat_dict_cut(state_dict_CE))
 print("Models loaded")
 
-overlap_results = pd.DataFrame(columns=['Steerable Overlap','Steerable Err','CE Overlap','CE Err'])
+steerable_overlap = pd.DataFrame(columns=['softmax prob','Overlap','Err'])
+CE_overlap = pd.DataFrame(columns=['softmax prob','Overlap','Err'])
 i=0
 for i in range(MAX_IMG):
     print("Begining assesment on image "+str(i))
     data1 = torch.Tensor(datamodule.predict_dataset[i]).unsqueeze(0)
+
+    CE_resnet.eval()
+    p1 = F.softmax(CE_resnet(data1),dim=1)[0].detach().cpu().numpy()
     av_overlap2, std_overlap2 = fr_rotation_test(CE_resnet, data=data1, idx = "img_" + str(i) +"_resnet_CE", target=None, PLOT=graph_mode)
+    ce_results =[p1,av_overlap2,std_overlap2]
+    CE_overlap.loc[i] = ce_results
     print("Resnet run completed")
+
+    G_resnet.eval()
+    p2 = F.softmax(G_resnet(data1),dim=1)[0].detach().cpu().numpy()
     av_overlap1, std_overlap1 = fr_rotation_test(G_resnet, data=data1, idx = "img_" + str(i)+"_resnet_G", target=None, PLOT=graph_mode)
+    steerable_results =[p2,av_overlap1,std_overlap1]
+    steerable_overlap.loc[i] = steerable_results
     print("G_Resnet run completed")
-    results =[av_overlap1,std_overlap1,av_overlap2,std_overlap2]
-    overlap_results.loc[i] = results
     i+=1
-overlap_results.to_csv("rot_err/overlap_index")
-print("Results writted to CSV")
+if graph_mode:
+    print("Finished generating images")
+else:
+    CE_overlap.to_csv("rot_err/CE_overlap_index")
+    steerable_overlap.to_csv("rot_err/G_overlap_index")
+    print("Results writted to CSV")
