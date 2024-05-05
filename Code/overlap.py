@@ -31,31 +31,31 @@ class modes(Enum):
     TEST = 1 #Test an existing saved model on a dataset
     PREDICT = 2 #Use an existing saved model on an unlabelled dataset
 
-DATASET = datasets.LOCAL_SUBSET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
+DATASET = datasets.CUT_DATASET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
 MODE = modes.PREDICT #Select which mode
 
-graph_mode = False
+graph_mode = True
 MULTI = True
 MIN_IMG = 0
-MAX_IMG = 3
-
-PATHS = dict(
-    LOCAL_SUBSET_DATA_PATH =  "Data/Subset",
-    LOCAL_SUBSET_CATALOG_PATH =  "Data/gz1_desi_cross_cat_local_subset.csv",
-)
+MAX_IMG = 2
 
 # PATHS = dict(
-#     METRICS_PATH = "/share/nas2/npower/mphys-galaxy/Metrics",
-#     LOG_PATH = "/share/nas2/npower/mphys-galaxy/Code/lightning_logs",
-#     FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg',
-#     LOCAL_SUBSET_DATA_PATH = '/share/nas2/npower/mphys-galaxy/Data/Subset',
-#     FULL_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat.csv',
-#     FULL_DESI_CATALOG_PATH =  '/share/nas2/npower/mphys-galaxy/Data/desi_full_cat.parquet',
-#     CUT_CATALOG_TEST_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_testing.csv',
-#     CUT_CATALOG_TRAIN_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_train_val_downsample.csv',
-#     BEST_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_best_subset.csv',
-#     LOCAL_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_local_subset.csv',
+#     LOCAL_SUBSET_DATA_PATH =  "Data/Subset",
+#     LOCAL_SUBSET_CATALOG_PATH =  "Data/gz1_desi_cross_cat_local_subset.csv",
 # )
+
+PATHS = dict(
+    METRICS_PATH = "/share/nas2/npower/mphys-galaxy/Metrics",
+    LOG_PATH = "/share/nas2/npower/mphys-galaxy/Code/lightning_logs",
+    FULL_DATA_PATH = '/share/nas2/walml/galaxy_zoo/decals/dr8/jpg',
+    LOCAL_SUBSET_DATA_PATH = '/share/nas2/npower/mphys-galaxy/Data/Subset',
+    FULL_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat.csv',
+    FULL_DESI_CATALOG_PATH =  '/share/nas2/npower/mphys-galaxy/Data/desi_full_cat.parquet',
+    CUT_CATALOG_TEST_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_testing.csv',
+    CUT_CATALOG_TRAIN_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_train_val_downsample.csv',
+    BEST_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_best_subset.csv',
+    LOCAL_SUBSET_CATALOG_PATH = '/share/nas2/npower/mphys-galaxy/Data/gz1_desi_cross_cat_local_subset.csv',
+)
 
 def build_mask(s, margin=2, dtype=torch.float32):
     mask = torch.zeros(1, 1, s, s, dtype=dtype)
@@ -135,6 +135,13 @@ def overlapping(x, y, n=None, beta=0.1): # adapt for 3 classes
         eta_z = np.minimum(f_x, f_y)
     return np.sum(eta_z)*dz
 
+def str_format(x):
+    if x>=0.01:
+        str1=(r"$ = $ {:.2f}".format(x))
+    else:
+        str1=(r"$ < 0.01$")
+    return str1
+
 def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
     #model is the model, data is one image, idx??
     T = 10#50 #number of passes
@@ -204,8 +211,10 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
     if PLOT:
         #a0.set_title("Input")
         if MULTI:
-            a2.set_title(r"$\langle \eta SZ \rangle = $ {:.2f}    $\langle \eta ZN \rangle = $ {:.2f}   $\langle \eta SZ \rangle = $ {:.2f}"
-                         .format(np.mean(eta[:,0]),np.mean(eta[:,1]),np.mean(eta[:,2]))) #add underscores and less than 0.01 check
+            #a2.set_title(r"$\langle \eta SZ \rangle = $ {:.2f}    $\langle \eta ZN \rangle = $ {:.2f}   $\langle \eta SZ \rangle = $ {:.2f}"
+            #             .format(np.mean(eta[:,0]),np.mean(eta[:,1]),np.mean(eta[:,2]))) #add underscores and less than 0.01 check
+            str_print = r"$\langle \eta _{SZ} \rangle $"+str_format(np.mean(eta[:,0]))+r"     $\langle \eta _{ZN} \rangle $"+str_format(np.mean(eta[:,1]))+r"      $\langle \eta _{SN} \rangle $" + str_format(np.mean(eta[:,2]))
+            a2.set_title(str_print)
         else:
             if np.mean(eta)>=0.01:
                 a2.set_title(r"$\langle \eta \rangle = $ {:.2f}".format(np.mean(eta)))
