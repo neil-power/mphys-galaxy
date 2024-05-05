@@ -189,10 +189,6 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
     outp_list = np.array(outp_list)
     inpt_list = np.array(inpt_list)
     rotation_list = np.array(rotation_list)
-
-    colours=["b","r","g"]#
-    fig2, (a2, a3) = pl.subplots(2, 1, gridspec_kw={'height_ratios': [8,1]})
-
     
     for i in range(len(rotation_list)):
         x = outp_list[i,:,0]
@@ -209,6 +205,8 @@ def fr_rotation_test(model, data, target, idx, device='cpu', PLOT=False):
             eta[i] = overlapping(x, y, n)
 
     if PLOT:
+        colours=["b","r","g"]#
+        fig2, (a2, a3) = pl.subplots(2, 1, gridspec_kw={'height_ratios': [8,1]})
         #a0.set_title("Input")
         if MULTI:
             #a2.set_title(r"$\langle \eta SZ \rangle = $ {:.2f}    $\langle \eta ZN \rangle = $ {:.2f}   $\langle \eta SZ \rangle = $ {:.2f}"
