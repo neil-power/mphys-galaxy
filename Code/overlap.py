@@ -31,13 +31,12 @@ class modes(Enum):
     TEST = 1 #Test an existing saved model on a dataset
     PREDICT = 2 #Use an existing saved model on an unlabelled dataset
 
-DATASET = datasets.CUT_DATASET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
+DATASET = datasets.CUT_TEST_DATASET #Select which dataset to train on, or if testing/predicting, which dataset the model was trained on
 MODE = modes.PREDICT #Select which mode
 
-graph_mode = True
+graph_mode = False
 MULTI = True
-MIN_IMG = 0
-MAX_IMG = 2
+MAX_IMG = -1
 
 # PATHS = dict(
 #     LOCAL_SUBSET_DATA_PATH =  "Data/Subset",
@@ -290,7 +289,7 @@ steerable_overlap = pd.DataFrame(columns=['softmax prob','Overlap','Err'])
 CE_overlap = pd.DataFrame(columns=['softmax prob','Overlap','Err'])
 i=0
 for i in range(len(datamodule.predict_dataloader())):
-    print("Begining assesment on image "+str(i))
+    print("Begining assessment on image "+str(i))
     data1 = torch.Tensor(datamodule.predict_dataset[i]).unsqueeze(0)
 
     CE_resnet.eval()
@@ -316,4 +315,4 @@ else:
     else:
         CE_overlap.to_csv("rot_err/CE_overlap_index.csv",index=False)
         steerable_overlap.to_csv("rot_err/G_overlap_index.csv",index=False)
-    print("Results writted to CSV")
+    print("Results written to CSV")
