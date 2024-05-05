@@ -259,9 +259,9 @@ def plot_cviols(repeat_metrics,model_ids,c_viols_list,title=True,dims=(9,11)):
         
     for i,model in enumerate(model_ids):
         ax = fig.add_subplot(xsize,ysize,i+1)
-        ax.set_ylabel('Predicted C Viol',fontsize=14)
-        ax.set_xlabel('Actual C Viol',fontsize=14)
-        ax.tick_params(axis='both', which='major', labelsize=14)
+        ax.set_ylabel('Predicted C Viol',fontsize=16)
+        ax.set_xlabel('Actual C Viol',fontsize=16)
+        ax.tick_params(axis='both', which='major', labelsize=16)
         c_viols = repeat_metrics["C Viol"].iloc[i]
         c_viols_err = repeat_metrics["C Viol Err"].iloc[i]
         label = model.replace('_cut_dataset','')
@@ -274,7 +274,7 @@ def plot_cviols(repeat_metrics,model_ids,c_viols_list,title=True,dims=(9,11)):
         if title:
             ax.set_title(label)
         ax.set_xticks(c_viols_list)
-        ax.legend(fontsize=14)
+        ax.legend(fontsize=16)
     plt.tight_layout()
     plt.show()
 
