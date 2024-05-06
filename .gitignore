@@ -86,3 +86,4 @@ Metrics/g_resnet50_cut_dataset_c/version_3/model.pt
 Metrics/g_resnet50_cut_dataset_c/version_4/model.pt
 
 Metrics/g_resnet18_cut_dataset_60_nr_flip_eq/version_0/model.pt
+Metrics/g_resnet18_cut_dataset_flip_eq/version_0/model.pt
