@@ -37,7 +37,7 @@ SET_CHIRALITY = None #Set to None unless you want to use galaxies from the CUT_D
 #resnet18,resnet34,resnet50,resnet101,resnet152,
 #ce_resnet50,lenet,g_resnet18,g_resnet50,g_lenet,g_resnet18_old
 MODEL_NAME = "g_resnet18"
-CUSTOM_ID = ""
+CUSTOM_ID = "flip_eq"
 CUSTOM_SAVE_ID = "" #This needs an _ if not ""
 
 USE_TENSORBOARD = True #Log to tensorboard as well as csv logger

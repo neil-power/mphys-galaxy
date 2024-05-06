@@ -36,7 +36,7 @@ MODE = modes.PREDICT #Select which mode
 
 graph_mode = False
 MULTI = True
-MAX_IMG = -1
+MAX_IMG = 100
 
 # PATHS = dict(
 #     LOCAL_SUBSET_DATA_PATH =  "Data/Subset",
