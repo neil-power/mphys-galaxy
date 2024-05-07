@@ -151,7 +151,7 @@ def get_results_runs(model_ids,mode,METRICS_PATH,max_runs=5,clean_titles=True,pr
 # ---------------------------------------------------------------------------------
 
 def get_predict_results_runs(model_ids,max_runs,METRICS_PATH,dataset_name="full_desi_dataset",clean_titles=True,print_latex=False,max_batch=10,errors=True):
-    repeat_metrics = pd.DataFrame(columns=["ACW","CW","Other","S/Z Ratio","C Viol"],index=model_ids)
+    repeat_metrics = pd.DataFrame(columns=["ACW","CW","Other","S/Z Ratio","C Viol","Total"],index=model_ids)
     repeat_metrics.columns.name="Model"
     for model in model_ids:
         total = 0
@@ -190,7 +190,8 @@ def get_predict_results_runs(model_ids,max_runs,METRICS_PATH,dataset_name="full_
                                         "CW": f"{np.average(cws):.0f} ({np.average(cws)/total:.1%}) ± {np.std(cws):.0f}",
                                         "Other": f"{np.average(others):.0f} ({np.average(others)/total:.1%}) ± {np.std(others):.0f}",
                                         "S/Z Ratio": f"{np.average(ratios):3.2f} ± {np.std(ratios):3.2f}",
-                                        "C Viol": f"{np.average(c_viols):3.2f} ± {np.std(c_viols):3.2f}"}
+                                        "C Viol": f"{np.average(c_viols):3.2f} ± {np.std(c_viols):3.2f}",
+                                        "Total": f"{total*max_runs}"}
     if print_latex:
         print(tabulate(repeat_metrics,headers='keys',tablefmt='latex'))
     if clean_titles:
@@ -303,7 +304,7 @@ def plot_spiral_nums(repeat_metrics,model_ids,c_viols_list):
  # ---------------------------------------------------------------------------------   
     
 def plot_combined_metrics(model_ids,metric_to_use,metric_label,METRICS_PATH,max_runs=5,show_err=True,l_loc='lower right'):
-    fig = plt.figure(figsize=(14,6))
+    fig = plt.figure(figsize=(14,5))
     ax1 = fig.add_subplot(111)
     ax1.set_xlabel('Epoch',fontsize=14)
     ax1.tick_params(axis='both', which='major', labelsize=14)
@@ -323,10 +324,10 @@ def plot_combined_metrics(model_ids,metric_to_use,metric_label,METRICS_PATH,max_
         label = model.replace('_cut_dataset','').replace('g','G').replace('ce','CE').replace('lenet','LeNet').replace('resnet','ResNet')
         ax1.plot(epoch,avg_metrics,linestyle='-',c=colours[i],label=label,linewidth=2)
         if show_err:
-            ax1.plot(epoch,avg_metrics-std_metrics,linestyle='--',c=colours[i],linewidth=.6)
-            ax1.plot(epoch,avg_metrics+std_metrics,linestyle='--',c=colours[i],linewidth=.6)
+            ax1.plot(epoch,avg_metrics-std_metrics,linestyle='--',c=colours[i],linewidth=.8)
+            ax1.plot(epoch,avg_metrics+std_metrics,linestyle='--',c=colours[i],linewidth=.8)
 
-    ax1.legend(loc=l_loc,ncol=int(len(model_ids)/2),fontsize=14)
+    ax1.legend(loc=l_loc,ncol=2,fontsize=14)
     ax1.grid()
     plt.show()
 
