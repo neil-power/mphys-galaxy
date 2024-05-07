@@ -32,7 +32,7 @@ DATASET = datasets.CUT_TEST_DATASET #Select which dataset to train on, or if tes
 MODE = modes.PREDICT #Select which mode
 
 MULTI = True
-MAX_IMG = -1
+MAX_IMG = 1000
 BATCHES = [0,1] #[0,1,2,3,4,5,6,7,8,9]
 
 MODEL = "g_resnet50"
